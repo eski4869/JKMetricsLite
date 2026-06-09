@@ -1,4 +1,4 @@
-﻿# JK Metrics Lite
+# JK Metrics Lite
 
 JK Metrics Lite is a Jump King mod that writes lightweight progress metrics for stream overlays and local review.
 
