@@ -1,0 +1,172 @@
+﻿<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 12px;
+      background: transparent;
+      color: #fff;
+      font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
+      font-size: 22px;
+      line-height: 1.35;
+    }
+
+    #pb {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 8px 14px;
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
+      font-size: 48px;
+      line-height: 1.1;
+      font-weight: bold;
+    }
+
+    table {
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: rgba(0, 0, 0, 0.75);
+    }
+
+    th, td {
+      padding: 4px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    th.area,
+    td.area {
+      width: 8ch;
+      max-width: 8ch;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    th.time,
+    td.time {
+      width: 12ch;
+      white-space: pre;
+    }
+
+    th.graph,
+    td.graph {
+      width: 32ch;
+      white-space: pre;
+    }
+
+    .current td {
+      color: #fff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+<div id="pb">PB: -</div>
+<br>
+<table>
+  <thead>
+    <tr>
+      <th class="area">Area</th>
+      <th class="time">First Reach</th>
+      <th class="graph">Stay Graph</th>
+      <th class="time">Stay Time</th>
+    </tr>
+  </thead>
+  <tbody id="rows">
+  </tbody>
+</table>
+
+<script>
+const areaFilePath = "area_bar_graph.tsv";
+const statusFilePath = "progress_status.tsv";
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+
+async function updateStatus() {
+  try {
+    const res = await fetch(statusFilePath + "?t=" + Date.now());
+    const text = await res.text();
+    const lines = text.trim().split(/\r?\n/);
+
+    for (const line of lines.slice(1)) {
+      const cols = line.split("\t");
+      const key = cols[0] || "";
+      const value = cols[1] || "";
+
+      if (key === "pb") {
+        document.getElementById("pb").textContent = value || "PB: -";
+        return;
+      }
+    }
+
+    document.getElementById("pb").textContent = "PB: -";
+  } catch (e) {
+    document.getElementById("pb").textContent = "PB: -";
+  }
+}
+
+async function updateAreaTable() {
+  try {
+    const res = await fetch(areaFilePath + "?t=" + Date.now());
+    const text = await res.text();
+
+    const lines = text.trim().split(/\r?\n/);
+    const tbody = document.getElementById("rows");
+
+    if (lines.length <= 1) {
+      tbody.innerHTML = "";
+      return;
+    }
+
+    const html = lines.slice(1).map(line => {
+      const cols = line.split("\t");
+      const areaIndex = cols[0] || "";
+      const areaName = cols[1] || "";
+      const firstReach = cols[2] || "";
+      const graph = cols[3] || "";
+      const stayTime = cols[4] || "";
+      const isCurrent = cols[5] === "1";
+
+      const areaText = (areaIndex === "Unknown" || areaName === "Unknown") ? "Unknown" : "Area " + areaIndex;
+
+      return "<tr" + (isCurrent ? " class='current'" : "") + ">" +
+        "<td class='area'>" + escapeHtml(areaText) + "</td>" +
+        "<td class='time'>" + escapeHtml(firstReach) + "</td>" +
+        "<td class='graph'>" + escapeHtml(graph) + "</td>" +
+        "<td class='time'>" + escapeHtml(stayTime) + (isCurrent ? " &lt;" : "") + "</td>" +
+      "</tr>";
+    }).join("");
+
+    tbody.innerHTML = html;
+  } catch (e) {
+    document.getElementById("rows").innerHTML =
+      "<tr><td colspan='4'>Failed to load area_bar_graph.tsv</td></tr>";
+  }
+}
+
+async function update() {
+  await updateStatus();
+  await updateAreaTable();
+}
+
+update();
+setInterval(update, 500);
+</script>
+</body>
+</html>
+
+

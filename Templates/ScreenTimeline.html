@@ -1,0 +1,249 @@
+﻿<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 12px;
+      background: transparent;
+      color: #fff;
+      font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
+    }
+
+    #panel {
+      display: inline-block;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.75);
+    }
+
+    #pb {
+      font-size: 48px;
+      line-height: 1.1;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    #title {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    canvas {
+      display: block;
+      width: 900px;
+      height: 420px;
+    }
+
+    #note {
+      margin-top: 6px;
+      font-size: 18px;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+<div id="panel">
+  <div id="pb">PB: -</div>
+  <div id="title">Screen Timeline</div>
+  <canvas id="chart" width="900" height="420"></canvas>
+  <div id="note">Recent screen progress</div>
+</div>
+
+<script>
+const timelineFilePath = "screen_timeline.tsv";
+const statusFilePath = "progress_status.tsv";
+
+const maxPoints = 5000;
+const absoluteMinScreen = 1;
+const absoluteMaxScreen = 169;
+
+async function updateStatus() {
+  try {
+    const res = await fetch(statusFilePath + "?t=" + Date.now());
+    const text = await res.text();
+    const lines = text.trim().split(/\r?\n/);
+
+    for (const line of lines.slice(1)) {
+      const cols = line.split("\t");
+      const key = cols[0] || "";
+      const value = cols[1] || "";
+
+      if (key === "pb") {
+        document.getElementById("pb").textContent = value || "PB: -";
+        return;
+      }
+    }
+
+    document.getElementById("pb").textContent = "PB: -";
+  } catch (e) {
+    document.getElementById("pb").textContent = "PB: -";
+  }
+}
+
+async function loadTimeline() {
+  const res = await fetch(timelineFilePath + "?t=" + Date.now());
+  const text = await res.text();
+
+  const lines = text.trim().split(/\r?\n/);
+
+  if (lines.length <= 1) {
+    return [];
+  }
+
+  const recentLines = lines.slice(Math.max(1, lines.length - maxPoints));
+
+  return recentLines.map(line => {
+    const cols = line.split("\t");
+
+    return {
+      elapsedFrames: Number(cols[0] || 0),
+      elapsedTime: cols[1] || "",
+      screen: Number(cols[2] || 0),
+      area: cols[3] || ""
+    };
+  }).filter(p =>
+    Number.isFinite(p.elapsedFrames) &&
+    Number.isFinite(p.screen) &&
+    p.screen >= absoluteMinScreen &&
+    p.screen <= absoluteMaxScreen
+  );
+}
+
+function drawChart(points) {
+  const canvas = document.getElementById("chart");
+  const ctx = canvas.getContext("2d");
+
+  const width = canvas.width;
+  const height = canvas.height;
+
+  ctx.clearRect(0, 0, width, height);
+
+  const paddingLeft = 56;
+  const paddingRight = 16;
+  const paddingTop = 16;
+  const paddingBottom = 34;
+
+  const plotWidth = width - paddingLeft - paddingRight;
+  const plotHeight = height - paddingTop - paddingBottom;
+
+  ctx.font = "16px Cascadia Mono, Consolas, monospace";
+  ctx.fillStyle = "white";
+  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.lineWidth = 1;
+
+  ctx.strokeRect(paddingLeft, paddingTop, plotWidth, plotHeight);
+
+  if (points.length === 0) {
+    ctx.fillText("No timeline data", paddingLeft + 20, paddingTop + 40);
+    return;
+  }
+
+  const visible = points.slice(-maxPoints);
+
+  const screenValues = visible.map(p => p.screen);
+  let yMin = Math.min(...screenValues);
+  let yMax = Math.max(...screenValues);
+
+  const yMargin = 3;
+  yMin = Math.max(absoluteMinScreen, yMin - yMargin);
+  yMax = Math.min(absoluteMaxScreen, yMax + yMargin);
+
+  if (yMax - yMin < 10) {
+    const center = Math.round((yMin + yMax) / 2);
+    yMin = Math.max(absoluteMinScreen, center - 5);
+    yMax = Math.min(absoluteMaxScreen, center + 5);
+  }
+
+  if (yMax - yMin < 10) {
+    if (yMin === absoluteMinScreen) {
+      yMax = Math.min(absoluteMaxScreen, yMin + 10);
+    } else if (yMax === absoluteMaxScreen) {
+      yMin = Math.max(absoluteMinScreen, yMax - 10);
+    }
+  }
+
+  const minX = visible[0].elapsedFrames;
+  const maxX = visible[visible.length - 1].elapsedFrames;
+
+  if (maxX <= minX || yMax <= yMin) {
+    return;
+  }
+
+  const yTicks = [
+    yMin,
+    Math.round(yMin + (yMax - yMin) * 0.25),
+    Math.round(yMin + (yMax - yMin) * 0.50),
+    Math.round(yMin + (yMax - yMin) * 0.75),
+    yMax
+  ];
+
+  for (const tick of yTicks) {
+    const y = paddingTop + plotHeight - ((tick - yMin) / (yMax - yMin)) * plotHeight;
+
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, y);
+    ctx.lineTo(paddingLeft + plotWidth, y);
+    ctx.stroke();
+
+    ctx.fillStyle = "white";
+    ctx.fillText(String(tick).padStart(3, " "), 8, y + 5);
+  }
+
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+
+  for (let i = 0; i < visible.length; i++) {
+    const p = visible[i];
+
+    const x = paddingLeft + ((p.elapsedFrames - minX) / (maxX - minX)) * plotWidth;
+    const y = paddingTop + plotHeight - ((p.screen - yMin) / (yMax - yMin)) * plotHeight;
+
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+
+  ctx.stroke();
+
+  const last = visible[visible.length - 1];
+  const lastX = paddingLeft + ((last.elapsedFrames - minX) / (maxX - minX)) * plotWidth;
+  const lastY = paddingTop + plotHeight - ((last.screen - yMin) / (yMax - yMin)) * plotHeight;
+
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.font = "18px Cascadia Mono, Consolas, monospace";
+  ctx.fillStyle = "white";
+  ctx.fillText("Screen " + last.screen + " / " + last.area, paddingLeft, height - 8);
+  ctx.fillText(last.elapsedTime, width - 260, height - 8);
+}
+
+async function update() {
+  await updateStatus();
+
+  try {
+    const points = await loadTimeline();
+    drawChart(points);
+  } catch (e) {
+    const canvas = document.getElementById("chart");
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "18px Cascadia Mono, Consolas, monospace";
+    ctx.fillStyle = "white";
+    ctx.fillText("Failed to load screen_timeline.tsv", 20, 40);
+  }
+}
+
+update();
+setInterval(update, 1000);
+</script>
+</body>
+</html>
+
