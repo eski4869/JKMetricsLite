@@ -9,6 +9,12 @@ namespace JKMetricsLite
     public partial class ScreenStayStatsBehaviour
     {
         private static readonly HashSet<string> _loggedErrorContexts = new HashSet<string>();
+        private static string _logOutputDir;
+
+        private static void SetLogOutputDir(string outputDir)
+        {
+            _logOutputDir = outputDir;
+        }
 
         internal static void LogError(string context, Exception exception)
         {
@@ -24,8 +30,14 @@ namespace JKMetricsLite
                     return;
                 }
 
-                string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                string outputDir = Path.Combine(assemblyDir, "JKMetricsLite");
+                string outputDir = _logOutputDir;
+
+                if (string.IsNullOrEmpty(outputDir))
+                {
+                    string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                    outputDir = Path.Combine(assemblyDir, OutputFolderName);
+                }
+
                 Directory.CreateDirectory(outputDir);
 
                 string logPath = Path.Combine(outputDir, "error.log");

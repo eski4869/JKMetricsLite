@@ -81,6 +81,9 @@ namespace JKMetricsLite
 
         private const int OutputIntervalFrames = 60;
         private const int MaxBarWidth = 30;
+        private const string OutputFolderName = "JKMetricsLite";
+        private const string ConfigFileName = "JKMetricsLite.env";
+        private const string OutputDirKey = "OUTPUT_DIR";
 
         private static ScreenStayStatsBehaviour _instance;
         private static bool _processExitRegistered = false;
@@ -125,8 +128,9 @@ namespace JKMetricsLite
 
             string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-            _outputDir = Path.Combine(assemblyDir, "JKMetricsLite");
+            _outputDir = ResolveOutputDir(assemblyDir);
             Directory.CreateDirectory(_outputDir);
+            SetLogOutputDir(_outputDir);
 
             _statePath = Path.Combine(_outputDir, "metrics_state.tsv");
             _areaBarGraphPath = Path.Combine(_outputDir, "area_bar_graph.tsv");
@@ -156,6 +160,67 @@ namespace JKMetricsLite
             }
 
             WriteOutputFiles(false);
+        }
+
+        private static string ResolveOutputDir(string assemblyDir)
+        {
+            string defaultOutputDir = Path.Combine(assemblyDir, OutputFolderName);
+
+            try
+            {
+                string configPath = Path.Combine(assemblyDir, ConfigFileName);
+
+                if (!File.Exists(configPath))
+                {
+                    return defaultOutputDir;
+                }
+
+                foreach (string line in File.ReadAllLines(configPath, Encoding.UTF8))
+                {
+                    string trimmedLine = line.Trim();
+
+                    if (trimmedLine.Length == 0 || trimmedLine.StartsWith("#"))
+                    {
+                        continue;
+                    }
+
+                    int separatorIndex = trimmedLine.IndexOf('=');
+
+                    if (separatorIndex < 0)
+                    {
+                        continue;
+                    }
+
+                    string key = trimmedLine.Substring(0, separatorIndex).Trim();
+
+                    if (!string.Equals(key, OutputDirKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    string value = trimmedLine.Substring(separatorIndex + 1).Trim().Trim('"');
+
+                    if (value.Length == 0)
+                    {
+                        return defaultOutputDir;
+                    }
+
+                    value = Environment.ExpandEnvironmentVariables(value);
+
+                    string configuredOutputDir = Path.IsPathRooted(value)
+                        ? Path.GetFullPath(value)
+                        : Path.GetFullPath(Path.Combine(assemblyDir, value));
+
+                    Directory.CreateDirectory(configuredOutputDir);
+                    return configuredOutputDir;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Read config", ex);
+            }
+
+            return defaultOutputDir;
         }
 
         private static void RegisterProcessExitHandler()
