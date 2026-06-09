@@ -14,6 +14,8 @@ OUTPUT_DIR=C:\Path\To\JKMetricsLite
 
 If `OUTPUT_DIR` is empty or `JKMetricsLite.env` is missing, the default folder next to the mod DLL is used.
 
+Overlay HTML files are created only when they do not already exist, so local edits are not overwritten. To regenerate an overlay HTML file, delete that file and launch the game again.
+
 Overlay HTML files:
 
 ```text

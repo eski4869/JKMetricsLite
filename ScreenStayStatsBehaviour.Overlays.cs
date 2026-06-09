@@ -35,6 +35,12 @@ namespace JKMetricsLite
         private void WriteOverlayHtml(string fileName, string html)
         {
             string path = Path.Combine(_outputDir, fileName);
+
+            if (File.Exists(path))
+            {
+                return;
+            }
+
             File.WriteAllText(path, html, Encoding.UTF8);
         }
 
