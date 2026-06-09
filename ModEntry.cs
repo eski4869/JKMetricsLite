@@ -177,8 +177,8 @@ namespace JKMetricsLite
 
                 string content =
                     "# JK Metrics Lite config" + Environment.NewLine +
-                    "# Leave OUTPUT_DIR empty to use the default JKMetricsLite folder next to the mod DLL." + Environment.NewLine +
-                    "# Relative paths are based on the mod DLL folder. Absolute paths are also supported." + Environment.NewLine +
+                    "# Leave OUTPUT_DIR empty to use the default JKMetricsLite folder in the same folder as this mod." + Environment.NewLine +
+                    "# Relative paths are based on this mod's folder. Absolute paths are also supported." + Environment.NewLine +
                     "OUTPUT_DIR=" + Environment.NewLine;
 
                 File.WriteAllText(configPath, content, Encoding.UTF8);
