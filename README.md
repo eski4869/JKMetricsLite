@@ -1,6 +1,8 @@
 # JK Metrics Lite
 
-JK Metrics Lite is a Jump King mod that writes lightweight progress metrics for stream overlays and local review.
+JK Metrics Lite is a Jump King mod that automatically detects area names and records first reach times, stay times, and screen transitions.
+
+It generates local HTML overlays and TSV data files so the metrics can be displayed in OBS during custom map playthroughs, blind runs, or speedruns.
 
 ## Output
 
