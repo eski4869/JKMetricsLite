@@ -6,7 +6,7 @@ JK Metrics Lite is a Jump King mod that writes lightweight progress metrics for 
 
 When the mod runs, it creates a `JKMetricsLite` folder next to the mod DLL. The folder contains overlay HTML files, TSV data files, saved state, and `error.log` if a recoverable error is detected.
 
-To use a different output folder, create `JKMetricsLite.env` next to the mod DLL and set `OUTPUT_DIR`.
+The mod also creates `JKMetricsLite.env` next to the mod DLL if it does not already exist. To use a different output folder, edit `OUTPUT_DIR` in that file.
 
 ```env
 OUTPUT_DIR=C:\Path\To\JKMetricsLite

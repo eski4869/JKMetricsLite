@@ -128,6 +128,8 @@ namespace JKMetricsLite
 
             string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
+            WriteDefaultConfigFileIfMissing(assemblyDir);
+
             _outputDir = ResolveOutputDir(assemblyDir);
             Directory.CreateDirectory(_outputDir);
             SetLogOutputDir(_outputDir);
@@ -160,6 +162,31 @@ namespace JKMetricsLite
             }
 
             WriteOutputFiles(false);
+        }
+
+        private static void WriteDefaultConfigFileIfMissing(string assemblyDir)
+        {
+            try
+            {
+                string configPath = Path.Combine(assemblyDir, ConfigFileName);
+
+                if (File.Exists(configPath))
+                {
+                    return;
+                }
+
+                string content =
+                    "# JK Metrics Lite config" + Environment.NewLine +
+                    "# Leave OUTPUT_DIR empty to use the default JKMetricsLite folder next to the mod DLL." + Environment.NewLine +
+                    "# Relative paths are based on the mod DLL folder. Absolute paths are also supported." + Environment.NewLine +
+                    "OUTPUT_DIR=" + Environment.NewLine;
+
+                File.WriteAllText(configPath, content, Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                LogError("Write default config", ex);
+            }
         }
 
         private static string ResolveOutputDir(string assemblyDir)
