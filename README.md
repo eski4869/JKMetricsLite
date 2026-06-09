@@ -37,7 +37,8 @@ Automatically detects area names and displays first reach time, stay graph, and 
 
 `area_no.html`
 
-Use this if you want to display area numbers instead of area names. Be aware that this mode numbers areas by first-reach order, not by the map's internal area order. Hidden or optional areas can throw off the numbering.
+Use this if you want to display area numbers instead of area names. Be aware that this mode numbers areas by first-reach order,
+not by the map's internal area order. Hidden or optional areas can throw off the numbering.
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/e29ce420-da61-4183-9861-313fc0f7df46" />
 
 `area_name_speedrun.html`
