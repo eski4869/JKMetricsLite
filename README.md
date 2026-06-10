@@ -85,6 +85,50 @@ The TSV file is selected manually so the page can work when opened directly in a
 <img width="661" height="579" alt="image" src="https://github.com/user-attachments/assets/99ae0f5a-647a-4e57-9f21-52c9dc95011c" />
 
 
+## Area and PB Logic
+
+Areas are detected from the map's `location_settings.xml` data.
+
+If multiple areas match the same screen, the area with the highest `start` value takes priority. For example, screen 10 is treated as `LOCATION_FALSE_KINGS_KEEP`, not `LOCATION_COLOSSAL_DRAIN`.
+
+```xml
+<Location>
+  <start>6</start>
+  <end>10</end>
+  <unlock>6</unlock>
+  <name>LOCATION_COLOSSAL_DRAIN</name>
+</Location>
+
+<Location>
+  <start>10</start>
+  <end>14</end>
+  <unlock>11</unlock>
+  <name>LOCATION_FALSE_KINGS_KEEP</name>
+</Location>
+```
+
+Screens that do not belong to any defined area are ignored for PB, first reach times, and stay time totals. For example, screen 131 is not included in either area below.
+
+```xml
+<Location>
+  <start>124</start>
+  <end>130</end>
+  <unlock>124</unlock>
+  <name>LOCATION_HOUSE_OF_NINE_LIVES</name>
+</Location>
+
+<Location>
+  <start>132</start>
+  <end>138</end>
+  <unlock>132</unlock>
+  <name>LOCATION_THE_PHANTOM_TOWER</name>
+</Location>
+```
+
+Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
+
+PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
+
 
 ## Reset Metrics
 
