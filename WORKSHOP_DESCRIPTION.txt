@@ -23,6 +23,12 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 
 By default, the mod creates a JKMetricsLite folder in the same folder as the mod. It also creates JKMetricsLite.env if it does not already exist.
 
+With the default Steam install location, the output folder is usually:
+
+[code]C:\Program Files (x86)\Steam\steamapps\workshop\content\1061090\3741632692\JKMetricsLite[/code]
+
+If your Steam library is installed somewhere else, the first part of the path will be different.
+
 To change the output folder, edit OUTPUT_DIR in JKMetricsLite.env. Leave it empty to use the default location.
 
 [hr]
