@@ -16,7 +16,9 @@ With the default Steam install location, the output folder is usually:
 
 If your Steam library is installed somewhere else, the first part of the path will be different.
 
-To change the output folder, edit OUTPUT_DIR in JKMetricsLite.env. Leave it empty to use the default location.
+To change the output folder, edit OUTPUT_DIR in JKMetricsLite.env. Leave it empty to use the default location. Restart the game after editing JKMetricsLite.env.
+
+Existing overlay HTML files are not overwritten. Delete an HTML file and restart the game to regenerate it.
 
 [hr]
 
