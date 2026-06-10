@@ -78,6 +78,9 @@ In practice, crop the overlay and use only the parts you need. The image below i
 
 `jump_activity.html` displays yearly jump activity from `jump_activity.tsv`. Open it directly in a browser and select the TSV file to view hourly jump heatmaps and monthly jumps.
 
+<img width="661" height="579" alt="image" src="https://github.com/user-attachments/assets/99ae0f5a-647a-4e57-9f21-52c9dc95011c" />
+
+
 
 ## Reset Metrics
 
