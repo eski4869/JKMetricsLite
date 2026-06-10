@@ -87,9 +87,11 @@ PB means the furthest reached position based on the first-reached area order and
 
 [h2]Reset Behavior[/h2]
 
-Metrics reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
+Area, screen, and PB metrics reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
 
 You can also reset metrics manually from the pause menu with Reset Metrics.
+
+jump_activity.tsv is not reset with run metrics. It keeps accumulating long-term jump activity data.
 
 [hr]
 

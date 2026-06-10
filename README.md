@@ -30,15 +30,15 @@ jump_activity.html
 
 Generated data files:
 
-| File | Description |
-| --- | --- |
-| `area_bar_graph.tsv` | Area first reach and stay time data. Updated regularly while playing. |
-| `screen_bar_graph.tsv` | Screen stay time data. Updated regularly while playing. |
-| `screen_timeline.tsv` | Screen transition history for the timeline graph. Appended regularly and reset with new metrics. |
-| `progress_status.tsv` | Small status file used by OBS overlays for PB display. Updated regularly while playing. |
-| `metrics_state.tsv` | Saved state used when continuing the same game. Updated regularly while playing. |
-| `jump_activity.tsv` | Timestamped total frames, jumps, and falls for jump activity charts. Appended about once per minute and on exit. |
-| `error.log` | Troubleshooting log. Created only when a recoverable error is detected. |
+| File | Description | Update timing |
+| --- | --- | --- |
+| `area_bar_graph.tsv` | Area first reach and stay time data. | About every 60 frames. |
+| `screen_bar_graph.tsv` | Screen stay time data. | About every 60 frames. |
+| `screen_timeline.tsv` | Screen transition history for the timeline graph. | Appended about every 60 frames. Reset with new metrics. |
+| `progress_status.tsv` | Small status file used by OBS overlays for PB display. | About every 60 frames. |
+| `metrics_state.tsv` | Saved state used when continuing the same game. | About every 60 frames and on exit. |
+| `jump_activity.tsv` | Timestamped total frames, jumps, and falls for jump activity charts. | Appended about every 3600 frames and on exit. |
+| `error.log` | Troubleshooting log. | Only when a recoverable error is detected. |
 
 ## OBS Setup
 
@@ -84,7 +84,9 @@ In practice, crop the overlay and use only the parts you need. The image below i
 
 ## Reset Metrics
 
-Metrics are reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
+Area, screen, and PB metrics are reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
 
 You can also use the in-game pause menu item `Reset Metrics` to clear the saved metrics manually.
+
+`jump_activity.tsv` is not reset with run metrics. It keeps accumulating long-term jump activity data.
 
