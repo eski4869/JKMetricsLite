@@ -1,8 +1,8 @@
 [h1]JK Metrics Lite[/h1]
 
-JK Metrics Lite is a lightweight Jump King overlay mod for custom maps, blind playthroughs, and speedruns.
+JK Metrics Lite is a lightweight metrics tool and progress tracker for Jump King Nexile maps and custom maps.
 
-It automatically detects area names and records first reach times, stay times, and screen transitions. The mod writes local HTML overlay files and TSV data files that can be displayed in OBS.
+It automatically detects your current area and screen, then saves first reach times, stay times, PB (furthest reached position), and screen transitions to local TSV files. The generated data can also be displayed in OBS during a run or reviewed afterward.
 
 [hr]
 
@@ -26,10 +26,20 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 
 [list]
 [*][b]area_name.html[/b] - Shows area names, first reach times, stay graphs, and stay times.
-[*][b]area_no.html[/b] - Shows area numbers instead of area names. Area numbers are assigned by first reach order, so hidden or optional areas can change the numbering.
+[*][b]area_no.html[/b] - Shows area numbers instead of area names.
 [*][b]area_name_speedrun.html[/b] - A compact speedrun-focused area table using m s ms time format.
 [*][b]screen_timeline.html[/b] - Displays screen transitions as a real-time graph.
 [/list]
+
+[hr]
+
+[h2]Area and PB Logic[/h2]
+
+Areas are detected from the map's location text data. Screens without a defined area name are ignored for area stats and PB.
+
+Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
+
+PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
 [hr]
 
