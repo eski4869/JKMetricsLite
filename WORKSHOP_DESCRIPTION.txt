@@ -6,19 +6,6 @@ It automatically detects area names and records first reach times, stay times, a
 
 [hr]
 
-[h2]OBS Overlays[/h2]
-
-After launching the game with the mod enabled, open OBS and add a Browser Source. Enable local file mode, then select one of the generated HTML files from the JKMetricsLite output folder.
-
-[list]
-[*][b]area_name.html[/b] - Shows area names, first reach times, stay graphs, and stay times.
-[*][b]area_no.html[/b] - Shows area numbers instead of area names. Area numbers are assigned by first reach order, so hidden or optional areas can change the numbering.
-[*][b]area_name_speedrun.html[/b] - A compact speedrun-focused area table using m s ms time format.
-[*][b]screen_timeline.html[/b] - Displays screen transitions as a real-time graph.
-[/list]
-
-[hr]
-
 [h2]Output Folder[/h2]
 
 By default, the mod creates a JKMetricsLite folder in the same folder as the mod. It also creates JKMetricsLite.env if it does not already exist.
@@ -30,6 +17,19 @@ With the default Steam install location, the output folder is usually:
 If your Steam library is installed somewhere else, the first part of the path will be different.
 
 To change the output folder, edit OUTPUT_DIR in JKMetricsLite.env. Leave it empty to use the default location.
+
+[hr]
+
+[h2]OBS Overlays[/h2]
+
+After launching the game with the mod enabled, open OBS and add a Browser Source. Enable local file mode, then select one of the generated HTML files from the JKMetricsLite output folder.
+
+[list]
+[*][b]area_name.html[/b] - Shows area names, first reach times, stay graphs, and stay times.
+[*][b]area_no.html[/b] - Shows area numbers instead of area names. Area numbers are assigned by first reach order, so hidden or optional areas can change the numbering.
+[*][b]area_name_speedrun.html[/b] - A compact speedrun-focused area table using m s ms time format.
+[*][b]screen_timeline.html[/b] - Displays screen transitions as a real-time graph.
+[/list]
 
 [hr]
 
