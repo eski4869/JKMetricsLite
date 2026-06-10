@@ -2,7 +2,7 @@
 
 JK Metrics Lite is a lightweight metrics tool and progress tracker for Jump King Nexile maps and custom maps.
 
-It automatically detects your current area and screen, then saves first reach times, stay times, PB (furthest reached position), and screen transitions to local TSV files. The generated data can also be displayed in OBS during a run or reviewed afterward.
+It automatically detects your current area and screen, then saves first reach times, stay times, PB (furthest reached position), screen transitions, and long-term jump activity to local TSV files. The generated data can also be displayed in OBS during a run or reviewed afterward.
 
 [hr]
 
@@ -40,6 +40,8 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 jump_activity.tsv records timestamped total frames, jumps, and falls while you play.
 
 Open jump_activity.html directly in a browser and select jump_activity.tsv to view hourly jump heatmaps and monthly jumps.
+
+The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
 
 [hr]
 
