@@ -11,6 +11,7 @@ namespace JKMetricsLite
         private const string AreaNoTemplateName = "AreaNo.html";
         private const string AreaNameSpeedrunTemplateName = "AreaNameSpeedrun.html";
         private const string ScreenTimelineTemplateName = "ScreenTimeline.html";
+        private const string JumpActivityTemplateName = "JumpActivity.html";
 
         private void WriteAreaNameOverlayHtml()
         {
@@ -30,6 +31,11 @@ namespace JKMetricsLite
         private void WriteScreenTimelineOverlayHtml()
         {
             WriteOverlayHtml("screen_timeline.html", LoadOverlayTemplate(ScreenTimelineTemplateName));
+        }
+
+        private void WriteJumpActivityOverlayHtml()
+        {
+            WriteOverlayHtml("jump_activity.html", LoadOverlayTemplate(JumpActivityTemplateName));
         }
 
         private void WriteOverlayHtml(string fileName, string html)

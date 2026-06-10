@@ -80,6 +80,7 @@ namespace JKMetricsLite
         private const int ScreenCount = 170;
 
         private const int OutputIntervalFrames = 60;
+        private const int ActivitySampleIntervalFrames = 3600;
         private const int MaxBarWidth = 30;
         private const string OutputFolderName = "JKMetricsLite";
         private const string ConfigFileName = "JKMetricsLite.env";
@@ -104,13 +105,18 @@ namespace JKMetricsLite
         private readonly string _screenBarGraphPath;
         private readonly string _screenTimelinePath;
         private readonly string _progressStatusPath;
+        private readonly string _activitySamplesPath;
 
         private Location[] _locations = new Location[0];
 
         private int _totalFrames = 0;
         private int _outputCounter = 0;
+        private int _activitySampleCounter = 0;
         private int _lastScreen = -1;
         private int _lastTimelineAppendFrames = -1;
+        private long _lastActivitySampleTotalFrames = -1;
+        private long _lastActivitySampleTotalJumps = -1;
+        private long _lastActivitySampleTotalFalls = -1;
         private string _lastArea = "Unknown";
 
         // PB is based on first-reached area order + first-reached screen order inside that area.
@@ -139,11 +145,15 @@ namespace JKMetricsLite
             _screenBarGraphPath = Path.Combine(_outputDir, "screen_bar_graph.tsv");
             _screenTimelinePath = Path.Combine(_outputDir, "screen_timeline.tsv");
             _progressStatusPath = Path.Combine(_outputDir, "progress_status.tsv");
+            _activitySamplesPath = Path.Combine(_outputDir, "jump_activity.tsv");
 
             WriteAreaNameOverlayHtml();
             WriteAreaNoOverlayHtml();
             WriteAreaNameSpeedrunOverlayHtml();
             WriteScreenTimelineOverlayHtml();
+            WriteJumpActivityOverlayHtml();
+            LoadLastActivitySample();
+            AppendActivitySampleTsv();
 
             _locations = LoadLocations();
 
@@ -268,20 +278,20 @@ namespace JKMetricsLite
 
         public static void FlushOnExit()
         {
-            FlushCurrentInstance(true);
+            FlushCurrentInstance(true, true);
         }
 
         public static void FlushOnLevelEnd()
         {
-            FlushCurrentInstance(true);
+            FlushCurrentInstance(true, true);
         }
 
         public static void FlushOnLevelUnload()
         {
-            FlushCurrentInstance(false);
+            FlushCurrentInstance(false, true);
         }
 
-        private static void FlushCurrentInstance(bool appendTimeline)
+        private static void FlushCurrentInstance(bool appendTimeline, bool appendActivity)
         {
             if (_instance == null)
             {
@@ -289,6 +299,11 @@ namespace JKMetricsLite
             }
 
             _instance.WriteOutputFiles(appendTimeline);
+
+            if (appendActivity)
+            {
+                _instance.AppendActivitySampleTsv();
+            }
         }
 
         public static void ResetFromMenu()
@@ -354,6 +369,14 @@ namespace JKMetricsLite
             {
                 _outputCounter = 0;
                 WriteOutputFiles(true);
+            }
+
+            _activitySampleCounter++;
+
+            if (_activitySampleCounter >= ActivitySampleIntervalFrames)
+            {
+                _activitySampleCounter = 0;
+                AppendActivitySampleTsv();
             }
 
             return true;

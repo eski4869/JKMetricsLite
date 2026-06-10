@@ -2,7 +2,7 @@
 
 JK Metrics Lite is a lightweight metrics tool and progress tracker for Jump King Nexile maps and custom maps.
 
-It automatically detects your current area and screen, then saves first reach times, stay times, PB (furthest reached position), and screen transitions to local TSV files. The generated data can also be displayed in OBS during a run or reviewed afterward.
+It automatically detects your current area and screen, then saves first reach times, stay times, PB (furthest reached position), screen transitions, and long-term jump activity to local TSV files. The generated data can also be displayed in OBS during a run or reviewed afterward.
 
 [hr]
 
@@ -32,6 +32,16 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 [*][b]area_name_speedrun.html[/b] - A compact speedrun-focused area table using m s ms time format.
 [*][b]screen_timeline.html[/b] - Displays screen transitions as a real-time graph.
 [/list]
+
+[hr]
+
+[h2]Jump Activity[/h2]
+
+jump_activity.tsv records timestamped total frames, jumps, and falls while you play.
+
+Open jump_activity.html directly in a browser and select jump_activity.tsv to view hourly jump heatmaps and monthly jumps.
+
+The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
 
 [hr]
 
@@ -79,9 +89,11 @@ PB means the furthest reached position based on the first-reached area order and
 
 [h2]Reset Behavior[/h2]
 
-Metrics reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
+Area, screen, and PB metrics reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
 
 You can also reset metrics manually from the pause menu with Reset Metrics.
+
+jump_activity.tsv is not reset with run metrics. It keeps accumulating long-term jump activity data.
 
 [hr]
 

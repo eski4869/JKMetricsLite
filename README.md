@@ -1,8 +1,10 @@
 # JK Metrics Lite
 
-JK Metrics Lite is a Jump King mod that automatically detects area names and records first reach times, stay times, and screen transitions.
+JK Metrics Lite is a lightweight metrics tool and progress tracker for Jump King Nexile maps and custom maps.
 
-It generates local HTML overlays and TSV data files so the metrics can be displayed in OBS during custom map playthroughs, blind runs, or speedruns.
+It automatically detects your current area and screen, then saves first reach times, stay times, PB (furthest reached position), screen transitions, and long-term jump activity to local TSV files.
+
+The generated data can be displayed in OBS during custom map playthroughs, blind runs, or speedruns, and can also be reviewed afterward in a browser.
 
 ## Output
 
@@ -18,24 +20,27 @@ If `OUTPUT_DIR` is empty or `JKMetricsLite.env` is missing, the default folder i
 
 Overlay HTML files are created only when they do not already exist, so local edits are not overwritten. To regenerate an overlay HTML file, delete that file and launch the game again.
 
-Overlay HTML files:
+Generated HTML files:
 
 ```text
 area_name.html
 area_no.html
 area_name_speedrun.html
 screen_timeline.html
+jump_activity.html
 ```
 
-Data files:
+Generated data files:
 
-```text
-area_bar_graph.tsv
-screen_bar_graph.tsv
-screen_timeline.tsv
-progress_status.tsv
-metrics_state.tsv
-```
+| File | Description | Update timing |
+| --- | --- | --- |
+| `area_bar_graph.tsv` | Area first reach and stay time data. | About every 60 frames. |
+| `screen_bar_graph.tsv` | Screen stay time data. | About every 60 frames. |
+| `screen_timeline.tsv` | Screen transition history for the timeline graph. | Appended about every 60 frames. Reset with new metrics. |
+| `progress_status.tsv` | Small status file used by OBS overlays for PB display. | About every 60 frames. |
+| `metrics_state.tsv` | Saved state used when continuing the same game. | About every 60 frames and on exit. |
+| `jump_activity.tsv` | Timestamped total frames, jumps, and falls for jump activity charts. | Appended about every 3600 frames and on exit. |
+| `error.log` | Troubleshooting log. | Only when a recoverable error is detected. |
 
 ## OBS Setup
 
@@ -67,15 +72,69 @@ Displays screen transitions as a real-time graph.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/8ca9df05-ac2a-472f-b7b4-a4ae0f5e8b64" />
 
-
 In practice, crop the overlay and use only the parts you need. The image below is an example stream layout.
 
 <img width="605" height="348" alt="image" src="https://github.com/user-attachments/assets/10760438-0855-4935-8f05-2f1c7db61d6b" />
 
+## Jump Activity
+
+`jump_activity.html` displays yearly jump activity from `jump_activity.tsv`. Open it directly in a browser and select the TSV file to view hourly jump heatmaps and monthly jumps.
+
+The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
+
+<img width="661" height="579" alt="image" src="https://github.com/user-attachments/assets/99ae0f5a-647a-4e57-9f21-52c9dc95011c" />
+
+
+## Area and PB Logic
+
+Areas are detected from the map's `location_settings.xml` data.
+
+If multiple areas match the same screen, the area with the highest `start` value takes priority. For example, screen 10 is treated as `LOCATION_FALSE_KINGS_KEEP`, not `LOCATION_COLOSSAL_DRAIN`.
+
+```xml
+<Location>
+  <start>6</start>
+  <end>10</end>
+  <unlock>6</unlock>
+  <name>LOCATION_COLOSSAL_DRAIN</name>
+</Location>
+
+<Location>
+  <start>10</start>
+  <end>14</end>
+  <unlock>11</unlock>
+  <name>LOCATION_FALSE_KINGS_KEEP</name>
+</Location>
+```
+
+Screens that do not belong to any defined area are ignored for PB, first reach times, and stay time totals. For example, screen 131 is not included in either area below.
+
+```xml
+<Location>
+  <start>124</start>
+  <end>130</end>
+  <unlock>124</unlock>
+  <name>LOCATION_HOUSE_OF_NINE_LIVES</name>
+</Location>
+
+<Location>
+  <start>132</start>
+  <end>138</end>
+  <unlock>132</unlock>
+  <name>LOCATION_THE_PHANTOM_TOWER</name>
+</Location>
+```
+
+Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
+
+PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
+
 
 ## Reset Metrics
 
-Metrics are reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
+Area, screen, and PB metrics are reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
 
 You can also use the in-game pause menu item `Reset Metrics` to clear the saved metrics manually.
+
+`jump_activity.tsv` is not reset with run metrics. It keeps accumulating long-term jump activity data.
 

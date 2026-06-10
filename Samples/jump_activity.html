@@ -1,0 +1,533 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>JK Metrics Lite Jump Activity</title>
+  <style>
+    :root {
+      --bg: #101216;
+      --panel: #1a1d23;
+      --line: #333943;
+      --text: #f5f0df;
+      --muted: #a5acb7;
+      --empty: #282d35;
+      --low: #245d57;
+      --mid: #438f6e;
+      --high: #c99a35;
+      --max: #f1d27c;
+      --accent: #7ab7cf;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Meiryo", sans-serif;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      padding-bottom: 16px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+
+    .sub,
+    .label,
+    .value {
+      color: var(--muted);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input[type="file"] {
+      max-width: 300px;
+      color: var(--muted);
+    }
+
+    button {
+      min-width: 40px;
+      height: 34px;
+      border: 1px solid var(--line);
+      background: #242932;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    #yearLabel {
+      min-width: 76px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 12px;
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--text);
+      font-size: 22px;
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    section {
+      padding: 16px;
+      margin-bottom: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    .hourly {
+      display: grid;
+      grid-template-columns: 46px repeat(24, minmax(22px, 1fr));
+      gap: 5px;
+      align-items: center;
+    }
+
+    .hour-label,
+    .weekday-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .weekday-label {
+      text-align: right;
+      padding-right: 4px;
+    }
+
+    .hour-cell,
+    .swatch {
+      background: var(--empty);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .hour-cell {
+      width: 100%;
+      min-width: 22px;
+      height: 22px;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+    }
+
+    .monthly {
+      display: grid;
+      gap: 10px;
+    }
+
+    .month-row {
+      display: grid;
+      grid-template-columns: 42px 1fr 150px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .bar-track {
+      height: 20px;
+      background: var(--empty);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--mid), var(--high), var(--max));
+    }
+
+    .value {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .empty-note {
+      color: var(--muted);
+      padding: 20px 0 6px;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 16px;
+      }
+
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .controls {
+        justify-content: flex-start;
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, minmax(130px, 1fr));
+      }
+
+      .hourly {
+        grid-template-columns: 42px repeat(24, 22px);
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div>
+      <h1>Jump Activity</h1>
+      <div id="status" class="sub">Choose jump_activity.tsv to render the sample data.</div>
+    </div>
+    <div class="controls">
+      <input id="fileInput" type="file" accept=".tsv,text/tab-separated-values,text/plain">
+      <button id="prevYear" title="Previous year">&lt;</button>
+      <div id="yearLabel">----</div>
+      <button id="nextYear" title="Next year">&gt;</button>
+    </div>
+  </header>
+
+  <div class="summary">
+    <div class="metric"><span class="label">Total jumps</span><strong id="totalJumps">-</strong></div>
+    <div class="metric"><span class="label">Total falls</span><strong id="totalFalls">-</strong></div>
+    <div class="metric"><span class="label">Active days</span><strong id="activeDays">-</strong></div>
+    <div class="metric"><span class="label">Best hour</span><strong id="bestHour">-</strong></div>
+  </div>
+
+  <section>
+    <h2>Hourly Jump Heatmap</h2>
+    <div id="hourly" class="hourly"></div>
+    <div class="legend">Less <span class="swatch"></span><span class="swatch"></span><span class="swatch"></span><span class="swatch"></span><span class="swatch"></span> More</div>
+  </section>
+
+  <section>
+    <h2>Monthly Jumps</h2>
+    <div id="monthly" class="monthly"></div>
+  </section>
+</div>
+
+<script>
+const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const colors = ["var(--empty)", "var(--low)", "var(--mid)", "var(--high)", "var(--max)"];
+
+let samples = [];
+let selectedYear = null;
+
+function parseTsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+
+  if (lines.length <= 1) {
+    return [];
+  }
+
+  const header = lines.shift().split("\t");
+
+  return lines.map(line => {
+    const cols = line.split("\t");
+    const row = {};
+
+    header.forEach((key, index) => {
+      row[key] = cols[index] || "";
+    });
+
+    const date = new Date(row.timestamp);
+
+    return {
+      timestamp: row.timestamp,
+      date,
+      totalFrames: Number(row.total_frames),
+      totalJumps: Number(row.total_jumps),
+      totalFalls: Number(row.total_falls)
+    };
+  }).filter(row =>
+    row.timestamp &&
+    !Number.isNaN(row.date.getTime()) &&
+    Number.isFinite(row.totalFrames) &&
+    Number.isFinite(row.totalJumps) &&
+    Number.isFinite(row.totalFalls)
+  ).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+
+function buildDeltas(rows) {
+  const deltas = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const prev = rows[i - 1];
+    const current = rows[i];
+    const frames = Math.max(0, current.totalFrames - prev.totalFrames);
+    const jumps = Math.max(0, current.totalJumps - prev.totalJumps);
+    const falls = Math.max(0, current.totalFalls - prev.totalFalls);
+
+    if (frames === 0 && jumps === 0 && falls === 0) {
+      continue;
+    }
+
+    deltas.push({
+      year: current.date.getFullYear(),
+      month: current.date.getMonth() + 1,
+      weekday: current.date.getDay(),
+      hour: current.date.getHours(),
+      localDate: formatDateKey(current.date),
+      frames,
+      jumps,
+      falls
+    });
+  }
+
+  return deltas;
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function addToMap(map, key, frames, jumps, falls) {
+  if (!map.has(key)) {
+    map.set(key, { frames: 0, jumps: 0, falls: 0 });
+  }
+
+  const item = map.get(key);
+  item.frames += frames;
+  item.jumps += jumps;
+  item.falls += falls;
+}
+
+function level(value, max) {
+  if (value <= 0 || max <= 0) return 0;
+  const ratio = value / max;
+  if (ratio < 0.25) return 1;
+  if (ratio < 0.50) return 2;
+  if (ratio < 0.75) return 3;
+  return 4;
+}
+
+function formatNumber(value) {
+  return Math.round(value).toLocaleString("en-US");
+}
+
+function formatFrames(frames) {
+  const seconds = Math.round(frames / 60);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  return hours > 0 ? `${hours}h ${String(minutes).padStart(2, "0")}m` : `${minutes}m`;
+}
+
+function availableYears() {
+  return Array.from(new Set(samples.map(row => row.date.getFullYear()))).sort();
+}
+
+function renderYear(year) {
+  selectedYear = year;
+  document.getElementById("yearLabel").textContent = year;
+
+  const deltas = buildDeltas(samples).filter(row => row.year === year);
+  const hourlyMap = new Map();
+  const monthlyMap = new Map();
+  const activeDates = new Set();
+
+  for (const row of deltas) {
+    addToMap(hourlyMap, `${row.weekday}-${row.hour}`, row.frames, row.jumps, row.falls);
+    addToMap(monthlyMap, row.month, row.frames, row.jumps, row.falls);
+
+    if (row.jumps > 0) {
+      activeDates.add(row.localDate);
+    }
+  }
+
+  renderSummary(deltas, hourlyMap, activeDates);
+  renderHourly(hourlyMap);
+  renderMonthly(monthlyMap);
+}
+
+function renderSummary(deltas, hourlyMap, activeDates) {
+  const totalJumps = deltas.reduce((sum, row) => sum + row.jumps, 0);
+  const totalFalls = deltas.reduce((sum, row) => sum + row.falls, 0);
+  let bestHour = "-";
+  let bestHourJumps = 0;
+
+  for (const [key, value] of hourlyMap.entries()) {
+    if (value.jumps > bestHourJumps) {
+      bestHourJumps = value.jumps;
+      const parts = key.split("-");
+      bestHour = `${weekdays[Number(parts[0])]} ${String(parts[1]).padStart(2, "0")}:00`;
+    }
+  }
+
+  document.getElementById("totalJumps").textContent = formatNumber(totalJumps);
+  document.getElementById("totalFalls").textContent = formatNumber(totalFalls);
+  document.getElementById("activeDays").textContent = formatNumber(activeDates.size);
+  document.getElementById("bestHour").textContent = bestHour;
+}
+
+function renderHourly(hourlyMap) {
+  const root = document.getElementById("hourly");
+  root.innerHTML = "";
+  root.appendChild(document.createElement("div"));
+
+  for (let hour = 0; hour < 24; hour++) {
+    const label = document.createElement("div");
+    label.className = "hour-label";
+    label.textContent = String(hour).padStart(2, "0");
+    root.appendChild(label);
+  }
+
+  const maxJumps = Math.max(0, ...Array.from(hourlyMap.values()).map(value => value.jumps));
+
+  for (let weekday = 0; weekday < weekdays.length; weekday++) {
+    const rowLabel = document.createElement("div");
+    rowLabel.className = "weekday-label";
+    rowLabel.textContent = weekdays[weekday];
+    root.appendChild(rowLabel);
+
+    for (let hour = 0; hour < 24; hour++) {
+      const key = `${weekday}-${hour}`;
+      const data = hourlyMap.get(key) || { frames: 0, jumps: 0, falls: 0 };
+      const cell = document.createElement("div");
+      const lv = level(data.jumps, maxJumps);
+
+      cell.className = "hour-cell";
+      cell.style.background = colors[lv];
+      cell.title = `${weekdays[weekday]} ${String(hour).padStart(2, "0")}:00 / ${formatNumber(data.jumps)} jumps / ${formatFrames(data.frames)}`;
+      root.appendChild(cell);
+    }
+  }
+
+  document.querySelectorAll(".swatch").forEach((node, index) => {
+    node.style.background = colors[index] || colors[0];
+  });
+}
+
+function renderMonthly(monthlyMap) {
+  const root = document.getElementById("monthly");
+  root.innerHTML = "";
+
+  const maxJumps = Math.max(0, ...Array.from(monthlyMap.values()).map(value => value.jumps));
+
+  for (let month = 1; month <= 12; month++) {
+    const data = monthlyMap.get(month) || { frames: 0, jumps: 0, falls: 0 };
+    const row = document.createElement("div");
+    const label = document.createElement("div");
+    const track = document.createElement("div");
+    const bar = document.createElement("div");
+    const value = document.createElement("div");
+
+    row.className = "month-row";
+    label.textContent = months[month - 1];
+    track.className = "bar-track";
+    bar.className = "bar";
+    bar.style.width = maxJumps > 0 ? `${Math.max(2, data.jumps / maxJumps * 100)}%` : "0";
+    value.className = "value";
+    value.textContent = `${formatNumber(data.jumps)} jumps`;
+
+    track.appendChild(bar);
+    row.appendChild(label);
+    row.appendChild(track);
+    row.appendChild(value);
+    root.appendChild(row);
+  }
+}
+
+function moveYear(offset) {
+  const years = availableYears();
+  const index = years.indexOf(selectedYear);
+
+  if (index < 0) {
+    return;
+  }
+
+  const nextIndex = Math.max(0, Math.min(years.length - 1, index + offset));
+  renderYear(years[nextIndex]);
+}
+
+function loadText(text, label) {
+  samples = parseTsv(text);
+  const years = availableYears();
+
+  document.getElementById("status").textContent = `${label}: ${formatNumber(samples.length)} samples loaded`;
+
+  if (years.length === 0) {
+    document.getElementById("status").textContent = `${label}: no valid samples found`;
+    return;
+  }
+
+  renderYear(years[0]);
+}
+
+document.getElementById("fileInput").addEventListener("change", event => {
+  const file = event.target.files[0];
+
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => loadText(String(reader.result || ""), file.name);
+  reader.readAsText(file, "utf-8");
+});
+
+document.getElementById("prevYear").addEventListener("click", () => moveYear(-1));
+document.getElementById("nextYear").addEventListener("click", () => moveYear(1));
+</script>
+</body>
+</html>
