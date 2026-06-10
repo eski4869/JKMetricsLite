@@ -18,24 +18,27 @@ If `OUTPUT_DIR` is empty or `JKMetricsLite.env` is missing, the default folder i
 
 Overlay HTML files are created only when they do not already exist, so local edits are not overwritten. To regenerate an overlay HTML file, delete that file and launch the game again.
 
-Overlay HTML files:
+Generated HTML files:
 
-```text
-area_name.html
-area_no.html
-area_name_speedrun.html
-screen_timeline.html
-```
+| File | Purpose | Update timing |
+| --- | --- | --- |
+| `area_name.html` | OBS overlay for area names, first reach times, stay graphs, and stay times. | Created only if missing when the mod starts. Existing files are not overwritten. |
+| `area_no.html` | OBS overlay for area numbers instead of area names. | Created only if missing when the mod starts. Existing files are not overwritten. |
+| `area_name_speedrun.html` | Compact OBS overlay for speedrun-style area timing. | Created only if missing when the mod starts. Existing files are not overwritten. |
+| `screen_timeline.html` | OBS overlay for the real-time screen transition graph. | Created only if missing when the mod starts. Existing files are not overwritten. |
+| `jump_activity.html` | Browser view for yearly jump activity from `jump_activity.tsv`. | Created only if missing when the mod starts. Existing files are not overwritten. |
 
-Data files:
+Generated data files:
 
-```text
-area_bar_graph.tsv
-screen_bar_graph.tsv
-screen_timeline.tsv
-progress_status.tsv
-metrics_state.tsv
-```
+| File | Purpose | Write mode | Update timing |
+| --- | --- | --- | --- |
+| `area_bar_graph.tsv` | Area first reach, stay graph, stay time, and current area flag. | Overwritten. | About every 60 frames, when metrics are reset, and when the mod flushes data on level unload, level end, or game exit. |
+| `screen_bar_graph.tsv` | Screen stay time and current screen flag. | Overwritten. | About every 60 frames, when metrics are reset, and when the mod flushes data on level unload, level end, or game exit. |
+| `screen_timeline.tsv` | Time-series screen transition samples for the timeline graph. | Appended. | About every 60 frames and when the mod flushes data on level end or game exit. Reset when starting a new game or using Reset Metrics. |
+| `progress_status.tsv` | Small status file used by OBS overlays for PB display. | Overwritten. | About every 60 frames, when metrics are reset, and when the mod flushes data on level unload, level end, or game exit. |
+| `metrics_state.tsv` | Saved state used to continue metrics when resuming the same game. | Overwritten. | Saved with the regular overlay data and when the mod flushes data on level unload, level end, or game exit. |
+| `jump_activity.tsv` | Timestamped total frames, jumps, and falls for jump activity charts. | Appended. Duplicate total values are skipped. | When the mod starts, about every 3600 frames, and when the mod flushes data on level unload, level end, or game exit. |
+| `error.log` | Recoverable error details for troubleshooting. | Appended. | Only when a recoverable error is detected. |
 
 ## OBS Setup
 
@@ -67,10 +70,13 @@ Displays screen transitions as a real-time graph.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/8ca9df05-ac2a-472f-b7b4-a4ae0f5e8b64" />
 
-
 In practice, crop the overlay and use only the parts you need. The image below is an example stream layout.
 
 <img width="605" height="348" alt="image" src="https://github.com/user-attachments/assets/10760438-0855-4935-8f05-2f1c7db61d6b" />
+
+## Jump Activity
+
+`jump_activity.html` displays yearly jump activity from `jump_activity.tsv`. Open it directly in a browser and select the TSV file to view hourly jump heatmaps and monthly jumps.
 
 
 ## Reset Metrics

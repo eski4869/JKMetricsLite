@@ -35,6 +35,14 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 
 [hr]
 
+[h2]Jump Activity[/h2]
+
+jump_activity.tsv records timestamped total frames, jumps, and falls while you play.
+
+Open jump_activity.html directly in a browser and select jump_activity.tsv to view hourly jump heatmaps and monthly jumps.
+
+[hr]
+
 [h2]Area and PB Logic[/h2]
 
 Areas are detected from the map's location_settings.xml data.
