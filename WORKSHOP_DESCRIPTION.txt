@@ -35,7 +35,39 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 
 [h2]Area and PB Logic[/h2]
 
-Areas are detected from the map's location text data. Screens without a defined area name are ignored for area stats and PB.
+Areas are detected from the map's location_settings.xml data.
+
+If multiple areas match the same screen, the area with the highest start value takes priority. For example, screen 10 is treated as LOCATION_FALSE_KINGS_KEEP, not LOCATION_COLOSSAL_DRAIN.
+
+[code]<Location>
+  <start>6</start>
+  <end>10</end>
+  <unlock>6</unlock>
+  <name>LOCATION_COLOSSAL_DRAIN</name>
+</Location>
+
+<Location>
+  <start>10</start>
+  <end>14</end>
+  <unlock>11</unlock>
+  <name>LOCATION_FALSE_KINGS_KEEP</name>
+</Location>[/code]
+
+Screens that do not belong to any defined area are ignored for PB, first reach times, and stay time totals. For example, screen 131 is not included in either area below.
+
+[code]<Location>
+  <start>124</start>
+  <end>130</end>
+  <unlock>124</unlock>
+  <name>LOCATION_HOUSE_OF_NINE_LIVES</name>
+</Location>
+
+<Location>
+  <start>132</start>
+  <end>138</end>
+  <unlock>132</unlock>
+  <name>LOCATION_THE_PHANTOM_TOWER</name>
+</Location>[/code]
 
 Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
 
