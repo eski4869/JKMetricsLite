@@ -114,9 +114,6 @@ namespace JKMetricsLite
         private int _activitySampleCounter = 0;
         private int _lastScreen = -1;
         private int _lastTimelineAppendFrames = -1;
-        private long _lastActivitySampleTotalFrames = -1;
-        private long _lastActivitySampleTotalJumps = -1;
-        private long _lastActivitySampleTotalFalls = -1;
         private string _lastArea = "Unknown";
 
         // PB is based on first-reached area order + first-reached screen order inside that area.
@@ -152,7 +149,6 @@ namespace JKMetricsLite
             WriteAreaNameSpeedrunOverlayHtml();
             WriteScreenTimelineOverlayHtml();
             WriteJumpActivityOverlayHtml();
-            LoadLastActivitySample();
             AppendActivitySampleTsv();
 
             _locations = LoadLocations();
@@ -278,7 +274,7 @@ namespace JKMetricsLite
 
         public static void FlushOnExit()
         {
-            FlushCurrentInstance(true, true);
+            FlushCurrentInstance(true, false);
         }
 
         public static void FlushOnLevelEnd()
@@ -288,7 +284,7 @@ namespace JKMetricsLite
 
         public static void FlushOnLevelUnload()
         {
-            FlushCurrentInstance(false, true);
+            FlushCurrentInstance(false, false);
         }
 
         private static void FlushCurrentInstance(bool appendTimeline, bool appendActivity)

@@ -15,56 +15,6 @@ namespace JKMetricsLite
             public long TotalFalls;
         }
 
-        private void LoadLastActivitySample()
-        {
-            try
-            {
-                if (!File.Exists(_activitySamplesPath))
-                {
-                    return;
-                }
-
-                string lastLine = null;
-
-                foreach (string line in File.ReadLines(_activitySamplesPath, Encoding.UTF8))
-                {
-                    if (!string.IsNullOrWhiteSpace(line))
-                    {
-                        lastLine = line;
-                    }
-                }
-
-                if (string.IsNullOrEmpty(lastLine) || lastLine.StartsWith("timestamp\t"))
-                {
-                    return;
-                }
-
-                string[] parts = lastLine.Split('\t');
-
-                if (parts.Length < 4)
-                {
-                    return;
-                }
-
-                long totalFrames;
-                long totalJumps;
-                long totalFalls;
-
-                if (long.TryParse(parts[1], out totalFrames) &&
-                    long.TryParse(parts[2], out totalJumps) &&
-                    long.TryParse(parts[3], out totalFalls))
-                {
-                    _lastActivitySampleTotalFrames = totalFrames;
-                    _lastActivitySampleTotalJumps = totalJumps;
-                    _lastActivitySampleTotalFalls = totalFalls;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError("Load activity sample", ex);
-            }
-        }
-
         private void AppendActivitySampleTsv()
         {
             try
@@ -72,13 +22,6 @@ namespace JKMetricsLite
                 ActivityTotals totals;
 
                 if (!TryGetCurrentActivityTotals(out totals))
-                {
-                    return;
-                }
-
-                if (totals.TotalFrames == _lastActivitySampleTotalFrames &&
-                    totals.TotalJumps == _lastActivitySampleTotalJumps &&
-                    totals.TotalFalls == _lastActivitySampleTotalFalls)
                 {
                     return;
                 }
@@ -102,10 +45,6 @@ namespace JKMetricsLite
                 );
 
                 File.AppendAllText(_activitySamplesPath, sb.ToString(), Encoding.UTF8);
-
-                _lastActivitySampleTotalFrames = totals.TotalFrames;
-                _lastActivitySampleTotalJumps = totals.TotalJumps;
-                _lastActivitySampleTotalFalls = totals.TotalFalls;
             }
             catch (Exception ex)
             {
