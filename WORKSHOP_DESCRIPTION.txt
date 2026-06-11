@@ -1,12 +1,20 @@
 [h1]JK Metrics Lite[/h1]
 
-JK Metrics Lite records run metrics and long-term metrics for Jump King Nexile maps and custom maps.
+JK Metrics Lite is a lightweight metrics tool and progress tracker for Jump King Nexile maps and custom maps.
 
-Its main purpose is to save useful TSV data that can be reviewed or analyzed later. The generated HTML files are convenience views: OBS overlays for run metrics, and a browser view for long-term activity.
+It automatically records useful run and activity data while you play.
 
-Run metrics track area first reach times, stay times, PB progress, and screen movement for the current attempt.
+Main features:
 
-Long-term metrics track timestamped total frames, jumps, and falls across play sessions, which can be used for personal recaps, heatmaps, or custom analysis.
+[list]
+[*]Automatically detects the current area and screen
+[*]Tracks first reach times and stay times for each area
+[*]Tracks PB progress based on the furthest reached area/screen
+[*]Generates OBS-ready overlays for blind playthroughs, exploration, and speedruns
+[*]Provides area name, area number, speedrun-style, and screen timeline views
+[*]Saves TSV metrics that can be reviewed later or used for custom analysis
+[*]Records long-term jump activity for heatmaps, monthly charts, or personal recaps
+[/list]
 
 [hr]
 
