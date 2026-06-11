@@ -1,8 +1,12 @@
 [h1]JK Metrics Lite[/h1]
 
-JK Metrics Lite is a lightweight metrics tool and progress tracker for Jump King Nexile maps and custom maps.
+JK Metrics Lite records run metrics and long-term metrics for Jump King Nexile maps and custom maps.
 
-It automatically detects your current area and screen, then saves first reach times, stay times, PB (furthest reached position), screen transitions, and long-term jump activity to local TSV files. The generated data can also be displayed in OBS during a run or reviewed afterward.
+Its main purpose is to save useful TSV data that can be reviewed or analyzed later. The generated HTML files are convenience views: OBS overlays for run metrics, and a browser view for long-term activity.
+
+Run metrics track area first reach times, stay times, PB progress, and screen movement for the current attempt.
+
+Long-term metrics track timestamped total frames, jumps, and falls across play sessions, which can be used for personal recaps, heatmaps, or custom analysis.
 
 [hr]
 
@@ -22,7 +26,19 @@ Existing overlay HTML files are not overwritten. Delete an HTML file and restart
 
 [hr]
 
-[h2]OBS Overlays[/h2]
+[h2]Run Metrics[/h2]
+
+Run metrics are for the current attempt. They are useful for blind custom map playthroughs, general exploration, and speedruns.
+
+[list]
+[*][b]area_bar_graph.tsv[/b] - Area first reach and stay time data.
+[*][b]screen_bar_graph.tsv[/b] - Screen stay time data.
+[*][b]screen_timeline.tsv[/b] - Screen movement history for the timeline graph.
+[*][b]progress_status.tsv[/b] - Small status file used by OBS overlays for PB display.
+[*][b]metrics_state.tsv[/b] - Saved run state used when continuing the same game.
+[/list]
+
+[b]OBS Views[/b]
 
 After launching the game with the mod enabled, open OBS and add a Browser Source. Enable local file mode, then select one of the generated HTML files from the JKMetricsLite output folder.
 
@@ -35,11 +51,17 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 
 [hr]
 
-[h2]Jump Activity[/h2]
+[h2]Long-Term Metrics[/h2]
 
-jump_activity.tsv records timestamped total frames, jumps, and falls while you play.
+Long-term metrics are accumulated across play sessions and are not reset with run metrics.
 
-Open jump_activity.html directly in a browser and select jump_activity.tsv to view hourly jump heatmaps and monthly jumps.
+[list]
+[*][b]jump_activity.tsv[/b] - Timestamped total frames, jumps, and falls for activity charts or custom analysis.
+[/list]
+
+[b]Browser View[/b]
+
+jump_activity.html is a convenience browser view for jump_activity.tsv. Open it directly in a browser and select the TSV file to view hourly jump heatmaps and monthly jumps.
 
 The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
 

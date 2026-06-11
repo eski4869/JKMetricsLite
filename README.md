@@ -1,10 +1,12 @@
 # JK Metrics Lite
 
-JK Metrics Lite is a lightweight metrics tool and progress tracker for Jump King Nexile maps and custom maps.
+JK Metrics Lite records run metrics and long-term metrics for Jump King Nexile maps and custom maps.
 
-It automatically detects your current area and screen, then saves first reach times, stay times, PB (furthest reached position), screen transitions, and long-term jump activity to local TSV files.
+Its main purpose is to save useful TSV data that can be reviewed or analyzed later. The generated HTML files are convenience views: OBS overlays for run metrics, and a browser view for long-term activity.
 
-The generated data can be displayed in OBS during custom map playthroughs, blind runs, or speedruns, and can also be reviewed afterward in a browser.
+Run metrics track area first reach times, stay times, PB progress, and screen movement for the current attempt.
+
+Long-term metrics track timestamped total frames, jumps, and falls across play sessions, which can be used for personal recaps, heatmaps, or custom analysis.
 
 ## Output
 
@@ -20,29 +22,21 @@ If `OUTPUT_DIR` is empty or `JKMetricsLite.env` is missing, the default folder i
 
 Overlay HTML files are created only when they do not already exist, so local edits are not overwritten. To regenerate an overlay HTML file, delete that file and launch the game again.
 
-Generated HTML files:
+Generated files are described below in the Run Metrics and Long-Term Metrics sections.
 
-```text
-area_name.html
-area_no.html
-area_name_speedrun.html
-screen_timeline.html
-jump_activity.html
-```
+## Run Metrics
 
-Generated data files:
+Run metrics are for the current attempt. They are useful for blind custom map playthroughs, general exploration, and speedruns.
 
 | File | Description | Update timing |
 | --- | --- | --- |
 | `area_bar_graph.tsv` | Area first reach and stay time data. | About every 60 frames. |
 | `screen_bar_graph.tsv` | Screen stay time data. | About every 60 frames. |
-| `screen_timeline.tsv` | Screen transition history for the timeline graph. | Appended about every 60 frames. Reset with new metrics. |
+| `screen_timeline.tsv` | Screen movement history for the timeline graph. | Appended about every 60 frames. Reset with new metrics. |
 | `progress_status.tsv` | Small status file used by OBS overlays for PB display. | About every 60 frames. |
-| `metrics_state.tsv` | Saved state used when continuing the same game. | About every 3600 frames and on exit. |
-| `jump_activity.tsv` | Timestamped total frames, jumps, and falls for jump activity charts. | Appended on mod start, about every 3600 frames, and on level end. Duplicate samples may be kept. |
-| `error.log` | Troubleshooting log. | Only when a recoverable error is detected. |
+| `metrics_state.tsv` | Saved run state used when continuing the same game. | About every 3600 frames and on exit. |
 
-## OBS Setup
+### OBS Views
 
 Add a Browser Source in OBS, enable local file mode, and select one of the generated HTML files in the `JKMetricsLite` output folder.
 
@@ -76,9 +70,15 @@ In practice, crop the overlay and use only the parts you need. The image below i
 
 <img width="605" height="348" alt="image" src="https://github.com/user-attachments/assets/10760438-0855-4935-8f05-2f1c7db61d6b" />
 
-## Jump Activity
+## Long-Term Metrics
 
-`jump_activity.html` displays yearly jump activity from `jump_activity.tsv`. Open it directly in a browser and select the TSV file to view hourly jump heatmaps and monthly jumps.
+Long-term metrics are accumulated across play sessions and are not reset with run metrics.
+
+| File | Description | Update timing |
+| --- | --- | --- |
+| `jump_activity.tsv` | Timestamped total frames, jumps, and falls for activity charts or custom analysis. | Appended on mod start, about every 3600 frames, and on level end. Duplicate samples may be kept. |
+
+`jump_activity.html` is a convenience browser view for `jump_activity.tsv`. Open it directly in a browser and select the TSV file to view hourly jump heatmaps and monthly jumps.
 
 The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
 
