@@ -38,7 +38,7 @@ Generated data files:
 | `screen_bar_graph.tsv` | Screen stay time data. | About every 60 frames. |
 | `screen_timeline.tsv` | Screen transition history for the timeline graph. | Appended about every 60 frames. Reset with new metrics. |
 | `progress_status.tsv` | Small status file used by OBS overlays for PB display. | About every 60 frames. |
-| `metrics_state.tsv` | Saved state used when continuing the same game. | About every 60 frames and on exit. |
+| `metrics_state.tsv` | Saved state used when continuing the same game. | About every 3600 frames and on exit. |
 | `jump_activity.tsv` | Timestamped total frames, jumps, and falls for jump activity charts. | Appended on mod start, about every 3600 frames, and on level end. Duplicate samples may be kept. |
 | `error.log` | Troubleshooting log. | Only when a recoverable error is detected. |
 

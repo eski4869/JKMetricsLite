@@ -80,6 +80,7 @@ namespace JKMetricsLite
         private const int ScreenCount = 170;
 
         private const int OutputIntervalFrames = 60;
+        private const int StateSaveIntervalFrames = 3600;
         private const int ActivitySampleIntervalFrames = 3600;
         private const int MaxBarWidth = 30;
         private const string OutputFolderName = "JKMetricsLite";
@@ -111,6 +112,7 @@ namespace JKMetricsLite
 
         private int _totalFrames = 0;
         private int _outputCounter = 0;
+        private int _stateSaveCounter = 0;
         private int _activitySampleCounter = 0;
         private int _lastScreen = -1;
         private int _lastTimelineAppendFrames = -1;
@@ -168,6 +170,7 @@ namespace JKMetricsLite
             }
 
             WriteOutputFiles(false);
+            SaveState();
         }
 
         private static void WriteDefaultConfigFileIfMissing(string assemblyDir)
@@ -295,6 +298,7 @@ namespace JKMetricsLite
             }
 
             _instance.WriteOutputFiles(appendTimeline);
+            _instance.SaveState();
 
             if (appendActivity)
             {
@@ -312,8 +316,8 @@ namespace JKMetricsLite
             _instance.ResetStats();
             _instance._stateAttempt = _instance.TryGetCurrentAttempt();
             _instance.ResetTimelineFile();
-            _instance.SaveState();
             _instance.WriteOutputFiles(false);
+            _instance.SaveState();
         }
 
         public bool ExecuteBehaviour(BehaviourContext behaviourContext)
@@ -367,6 +371,14 @@ namespace JKMetricsLite
                 WriteOutputFiles(true);
             }
 
+            _stateSaveCounter++;
+
+            if (_stateSaveCounter >= StateSaveIntervalFrames)
+            {
+                _stateSaveCounter = 0;
+                SaveState();
+            }
+
             _activitySampleCounter++;
 
             if (_activitySampleCounter >= ActivitySampleIntervalFrames)
@@ -388,8 +400,6 @@ namespace JKMetricsLite
             {
                 AppendScreenTimelineTsv();
             }
-
-            SaveState();
           }
     }
 }
