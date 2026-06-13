@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
-using BehaviorTree;
+using System.Xml.Serialization;
 using EntityComponent;
 using JumpKing.API;
 using JumpKing.BodyCompBehaviours;
@@ -11,7 +11,7 @@ using JumpKing.MiscSystems.Achievements;
 using JumpKing.MiscSystems.LocationText;
 using JumpKing.Mods;
 using JumpKing.PauseMenu;
-using JumpKing.PauseMenu.BT;
+using JumpKing.PauseMenu.BT.Actions;
 using JumpKing.Player;
 
 namespace JKMetricsLite
@@ -19,58 +19,230 @@ namespace JKMetricsLite
     [JumpKingMod("eski4869.JKMetricsLite")]
     public static class JKMetricsLiteMod
     {
+        private const string SettingsFileName = "eski4869.JKMetricsLite.Settings.xml";
+
         private static ScreenStayStatsBehaviour _registeredBehaviour;
+        private static MetricsPreferences _preferences;
+        private static string _settingsPath;
+        private static bool _settingsDirty;
+        private static bool _processExitRegistered;
 
         [OnLevelStart]
         public static void OnLevelStart()
         {
+            EnsurePreferencesLoaded();
+
+            if (!_preferences.IsEnabled)
+            {
+                UnregisterMetricsBehaviour();
+                return;
+            }
+
+            RegisterMetricsBehaviour();
+        }
+
+        private static void RegisterMetricsBehaviour()
+        {
+            PlayerEntity player = EntityManager.instance.Find<PlayerEntity>();
+
+            if (player == null)
+            {
+                return;
+            }
+
+            if (_registeredBehaviour != null)
+            {
+                try
+                {
+                    player.m_body.RemoveBehaviour(_registeredBehaviour);
+                }
+                catch (Exception ex)
+                {
+                    ScreenStayStatsBehaviour.LogError("Remove previous behaviour", ex);
+                }
+            }
+
+            _registeredBehaviour = new ScreenStayStatsBehaviour();
+            player.m_body.RegisterBehaviour(_registeredBehaviour);
+        }
+
+        private static void UnregisterMetricsBehaviour()
+        {
+            if (_registeredBehaviour == null)
+            {
+                return;
+            }
+
             PlayerEntity player = EntityManager.instance.Find<PlayerEntity>();
 
             if (player != null)
             {
-                if (_registeredBehaviour != null)
+                try
                 {
-                    try
-                    {
-                        player.m_body.RemoveBehaviour(_registeredBehaviour);
-                    }
-                    catch (Exception ex)
-                    {
-                        ScreenStayStatsBehaviour.LogError("Remove previous behaviour", ex);
-                    }
+                    player.m_body.RemoveBehaviour(_registeredBehaviour);
                 }
-
-                _registeredBehaviour = new ScreenStayStatsBehaviour();
-                player.m_body.RegisterBehaviour(_registeredBehaviour);
+                catch (Exception ex)
+                {
+                    ScreenStayStatsBehaviour.LogError("Remove metrics behaviour", ex);
+                }
             }
+
+            _registeredBehaviour = null;
         }
 
         [OnLevelEnd]
         public static void OnLevelEnd()
         {
-            ScreenStayStatsBehaviour.FlushOnLevelEnd();
+            SaveSettingsIfDirty();
+
+            if (IsMetricsEnabled())
+            {
+                ScreenStayStatsBehaviour.FlushOnLevelEnd();
+            }
         }
 
         [OnLevelUnload]
         public static void OnLevelUnload()
         {
-            ScreenStayStatsBehaviour.FlushOnLevelUnload();
+            SaveSettingsIfDirty();
+
+            if (IsMetricsEnabled())
+            {
+                ScreenStayStatsBehaviour.FlushOnLevelUnload();
+            }
         }
 
         [PauseMenuItemSetting]
-        public static TextButton ResetMetricsMenu(object factory, GuiFormat format)
+        [MainMenuItemSetting]
+        public static MetricsToggle MetricsMenu(object factory, GuiFormat format)
         {
-            return new TextButton("Reset Metrics", new ResetMetricsNode());
+            return new MetricsToggle();
+        }
+
+        public static bool IsMetricsEnabled()
+        {
+            EnsurePreferencesLoaded();
+            return _preferences.IsEnabled;
+        }
+
+        public static void SetMetricsEnabled(bool isEnabled)
+        {
+            EnsurePreferencesLoaded();
+
+            if (_preferences.IsEnabled == isEnabled)
+            {
+                return;
+            }
+
+            _preferences.IsEnabled = isEnabled;
+            _settingsDirty = true;
+
+            if (isEnabled)
+            {
+                RegisterMetricsBehaviour();
+            }
+            else
+            {
+                UnregisterMetricsBehaviour();
+            }
+        }
+
+        private static void EnsurePreferencesLoaded()
+        {
+            if (_preferences != null)
+            {
+                RegisterProcessExit();
+                return;
+            }
+
+            string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            _settingsPath = Path.Combine(assemblyDir, SettingsFileName);
+
+            try
+            {
+                if (File.Exists(_settingsPath))
+                {
+                    var serializer = new XmlSerializer(typeof(MetricsPreferences));
+
+                    using (var stream = File.OpenRead(_settingsPath))
+                    {
+                        _preferences = (MetricsPreferences)serializer.Deserialize(stream);
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            if (_preferences == null)
+            {
+                _preferences = new MetricsPreferences();
+                _settingsDirty = true;
+            }
+
+            RegisterProcessExit();
+        }
+
+        private static void RegisterProcessExit()
+        {
+            if (_processExitRegistered)
+            {
+                return;
+            }
+
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+            _processExitRegistered = true;
+        }
+
+        private static void OnProcessExit(object sender, EventArgs e)
+        {
+            SaveSettingsIfDirty();
+        }
+
+        private static void SaveSettingsIfDirty()
+        {
+            if (!_settingsDirty || _preferences == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var serializer = new XmlSerializer(typeof(MetricsPreferences));
+
+                using (var stream = File.Create(_settingsPath))
+                {
+                    serializer.Serialize(stream, _preferences);
+                }
+
+                _settingsDirty = false;
+            }
+            catch
+            {
+            }
         }
     }
 
-    public class ResetMetricsNode : IBTnode
+    public class MetricsToggle : ITextToggle
     {
-        protected override BTresult MyRun(TickData p_data)
+        public MetricsToggle() : base(JKMetricsLiteMod.IsMetricsEnabled())
         {
-            ScreenStayStatsBehaviour.ResetFromMenu();
-            return BTresult.Success;
         }
+
+        protected override string GetName()
+        {
+            return "JK Metrics Lite";
+        }
+
+        protected override void OnToggle()
+        {
+            JKMetricsLiteMod.SetMetricsEnabled(toggle);
+        }
+    }
+
+    public class MetricsPreferences
+    {
+        public bool IsEnabled { get; set; } = true;
     }
 
     public partial class ScreenStayStatsBehaviour : IBodyCompBehaviour
@@ -277,6 +449,11 @@ namespace JKMetricsLite
 
         public static void FlushOnExit()
         {
+            if (!JKMetricsLiteMod.IsMetricsEnabled())
+            {
+                return;
+            }
+
             FlushCurrentInstance(true, false);
         }
 
@@ -304,20 +481,6 @@ namespace JKMetricsLite
             {
                 _instance.AppendActivitySampleTsv();
             }
-        }
-
-        public static void ResetFromMenu()
-        {
-            if (_instance == null)
-            {
-                return;
-            }
-
-            _instance.ResetStats();
-            _instance._stateAttempt = _instance.TryGetCurrentAttempt();
-            _instance.ResetTimelineFile();
-            _instance.WriteOutputFiles(false);
-            _instance.SaveState();
         }
 
         public bool ExecuteBehaviour(BehaviourContext behaviourContext)
