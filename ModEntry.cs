@@ -269,7 +269,6 @@ namespace JKMetricsLite
         private const int OutputIntervalFrames = 60;
         private const int StateSaveIntervalFrames = 3600;
         private const int ActivitySampleIntervalFrames = 3600;
-        private const int MaxBarWidth = 30;
         private const string OutputFolderName = "JKMetricsLite";
         private const string ConfigFileName = "JKMetricsLite.env";
         private const string OutputDirKey = "OUTPUT_DIR";

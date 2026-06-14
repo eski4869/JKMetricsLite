@@ -12,11 +12,10 @@ namespace JKMetricsLite
     {
         private void WriteAreaBarGraphTsv()
         {
-            int maxFrames = GetMaxAreaFrames();
             Dictionary<string, string> areaIndexMap = BuildAreaIndexMap();
 
             var sb = new StringBuilder();
-            sb.AppendLine("area_index\tarea_name\tfirst_reach\tstay_graph\tstay_time\tis_current\tfirst_reach_speedrun\tstay_time_speedrun");
+            sb.AppendLine("area_index\tarea_name\tfirst_reach_frames\tfirst_reach\tstay_frames\tstay_time\tis_current\tfirst_reach_speedrun\tstay_time_speedrun");
 
             foreach (string area in GetAreaFramesInAppearedOrder())
             {
@@ -29,10 +28,12 @@ namespace JKMetricsLite
 
                 string firstReachedTime = "-";
                 string firstReachedSpeedrunTime = "-";
+                string firstReachedFrames = "";
 
                 if (_areaFirstReachedFrames.ContainsKey(area))
                 {
                     int firstFrames = _areaFirstReachedFrames[area];
+                    firstReachedFrames = firstFrames.ToString();
                     firstReachedTime = FormatFramesAsTime(firstFrames);
                     firstReachedSpeedrunTime = FormatFramesAsSpeedrunTime(firstFrames);
                 }
@@ -47,8 +48,9 @@ namespace JKMetricsLite
                 sb.AppendLine(
                     EscapeTsv(areaIndex) + "\t" +
                     EscapeTsv(area) + "\t" +
+                    firstReachedFrames + "\t" +
                     EscapeTsv(firstReachedTime) + "\t" +
-                    EscapeTsv(BuildBar(frames, maxFrames)) + "\t" +
+                    frames + "\t" +
                     EscapeTsv(FormatFramesAsTime(frames)) + "\t" +
                     (area == _lastArea ? "1" : "0") + "\t" +
                     EscapeTsv(firstReachedSpeedrunTime) + "\t" +
@@ -104,25 +106,8 @@ namespace JKMetricsLite
 
         private void WriteScreenBarGraphTsv()
         {
-            int maxFrames = 0;
-
-            for (int screen = MinScreen; screen <= MaxScreen; screen++)
-            {
-                string area = GetAreaNameForScreen(screen);
-
-                if (area == "Unknown")
-                {
-                    continue;
-                }
-
-                if (_screenFrames[screen] > maxFrames)
-                {
-                    maxFrames = _screenFrames[screen];
-                }
-            }
-
             var sb = new StringBuilder();
-            sb.AppendLine("screen\tstay_graph\tstay_time\tarea\tis_current");
+            sb.AppendLine("screen\tstay_frames\tstay_time\tarea\tis_current");
 
             for (int screen = MinScreen; screen <= MaxScreen; screen++)
             {
@@ -137,7 +122,7 @@ namespace JKMetricsLite
 
                 sb.AppendLine(
                     screen + "\t" +
-                    EscapeTsv(BuildBar(frames, maxFrames)) + "\t" +
+                    frames + "\t" +
                     EscapeTsv(FormatFramesAsTime(frames)) + "\t" +
                     EscapeTsv(area) + "\t" +
                     (screen == _lastScreen ? "1" : "0")
@@ -248,38 +233,6 @@ namespace JKMetricsLite
             {
                 LogError("Append screen timeline TSV", ex);
             }
-        }
-
-        private int GetMaxAreaFrames()
-        {
-            int maxFrames = 0;
-
-            foreach (KeyValuePair<string, int> pair in _areaFrames)
-            {
-                if (pair.Key == "Unknown")
-                {
-                    continue;
-                }
-
-                if (pair.Value > maxFrames)
-                {
-                    maxFrames = pair.Value;
-                }
-            }
-
-            return maxFrames;
-        }
-
-        private string BuildBar(int frames, int maxFrames)
-        {
-            int barWidth = 0;
-
-            if (maxFrames > 0)
-            {
-                barWidth = (int)Math.Round(frames * MaxBarWidth / (double)maxFrames);
-            }
-
-            return new string('#', barWidth);
         }
 
         private List<string> GetAreaFramesInAppearedOrder()

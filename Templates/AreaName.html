@@ -87,6 +87,8 @@
 <script>
 const areaFilePath = "area_bar_graph.tsv";
 const statusFilePath = "progress_status.tsv";
+const graphWidth = 30;
+
 function escapeHtml(value) {
   return value
     .replaceAll("&", "&amp;")
@@ -95,6 +97,14 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function buildGraph(frames, maxFrames) {
+  if (maxFrames <= 0 || frames <= 0) {
+    return "";
+  }
+
+  const width = Math.round(frames * graphWidth / maxFrames);
+  return "#".repeat(width);
+}
 
 async function updateStatus() {
   try {
@@ -132,22 +142,30 @@ async function updateAreaTable() {
       return;
     }
 
-    const html = lines.slice(1).map(line => {
+    const rows = lines.slice(1).map(line => {
       const cols = line.split("\t");
-      const areaIndex = cols[0] || "";
-      const areaName = cols[1] || "";
-      const firstReach = cols[2] || "";
-      const graph = cols[3] || "";
-      const stayTime = cols[4] || "";
-      const isCurrent = cols[5] === "1";
+      return {
+        areaIndex: cols[0] || "",
+        areaName: cols[1] || "",
+        firstReach: cols[3] || "",
+        stayFrames: Number.parseInt(cols[4] || "0", 10) || 0,
+        stayTime: cols[5] || "",
+        isCurrent: cols[6] === "1"
+      };
+    });
 
-      const areaText = areaName;
+    const maxStayFrames = rows.reduce((max, row) => Math.max(max, row.stayFrames), 0);
 
-      return "<tr" + (isCurrent ? " class='current'" : "") + ">" +
+    const html = rows.map(row => {
+      const graph = buildGraph(row.stayFrames, maxStayFrames);
+
+      const areaText = row.areaName;
+
+      return "<tr" + (row.isCurrent ? " class='current'" : "") + ">" +
         "<td class='area'>" + escapeHtml(areaText) + "</td>" +
-        "<td class='time'>" + escapeHtml(firstReach) + "</td>" +
+        "<td class='time'>" + escapeHtml(row.firstReach) + "</td>" +
         "<td class='graph'>" + escapeHtml(graph) + "</td>" +
-        "<td class='time'>" + escapeHtml(stayTime) + (isCurrent ? " &lt;" : "") + "</td>" +
+        "<td class='time'>" + escapeHtml(row.stayTime) + (row.isCurrent ? " &lt;" : "") + "</td>" +
       "</tr>";
     }).join("");
 

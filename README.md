@@ -36,8 +36,8 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 
 | File | Description | Update timing |
 | --- | --- | --- |
-| `area_bar_graph.tsv` | Area first reach and stay time data. | About every 60 frames. |
-| `screen_bar_graph.tsv` | Screen stay time data. | About every 60 frames. |
+| `area_bar_graph.tsv` | Area first reach, stay frames, and stay time data. | About every 60 frames. |
+| `screen_bar_graph.tsv` | Screen stay frames and stay time data. | About every 60 frames. |
 | `screen_timeline.tsv` | Screen movement history for the timeline graph. | Appended about every 60 frames. Reset with new metrics. |
 | `progress_status.tsv` | Small status file used by OBS overlays for PB display. | About every 60 frames. |
 | `metrics_state.tsv` | Saved run state used when continuing the same game. | About every 3600 frames and on exit. |
@@ -139,8 +139,6 @@ PB means the furthest reached position based on the first-reached area order and
 ## Reset Metrics
 
 Area, screen, and PB metrics are reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
-
-You can also use the in-game pause menu item `Reset Metrics` to clear the saved metrics manually.
 
 `jump_activity.tsv` is not reset with run metrics. It keeps accumulating long-term jump activity data.
 

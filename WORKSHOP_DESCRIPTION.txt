@@ -39,8 +39,8 @@ Existing overlay HTML files are not overwritten. Delete an HTML file and restart
 Run metrics are for the current attempt. They are useful for blind custom map playthroughs, general exploration, and speedruns.
 
 [list]
-[*][b]area_bar_graph.tsv[/b] - Area first reach and stay time data.
-[*][b]screen_bar_graph.tsv[/b] - Screen stay time data.
+[*][b]area_bar_graph.tsv[/b] - Area first reach, stay frames, and stay time data.
+[*][b]screen_bar_graph.tsv[/b] - Screen stay frames and stay time data.
 [*][b]screen_timeline.tsv[/b] - Screen movement history for the timeline graph.
 [*][b]progress_status.tsv[/b] - Small status file used by OBS overlays for PB display.
 [*][b]metrics_state.tsv[/b] - Saved run state used when continuing the same game.
@@ -120,8 +120,6 @@ PB means the furthest reached position based on the first-reached area order and
 [h2]Reset Behavior[/h2]
 
 Area, screen, and PB metrics reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
-
-You can also reset metrics manually from the pause menu with Reset Metrics.
 
 jump_activity.tsv is not reset with run metrics. It keeps accumulating long-term jump activity data.
 

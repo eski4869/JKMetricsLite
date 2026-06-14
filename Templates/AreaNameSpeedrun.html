@@ -89,9 +89,9 @@ async function updateAreaTable() {
     const html = lines.slice(1).map(line => {
       const cols = line.split("\t");
       const areaName = cols[1] || "";
-      const isCurrent = cols[5] === "1";
-      const firstReach = cols[6] || "";
-      const stayTime = cols[7] || "";
+      const isCurrent = cols[6] === "1";
+      const firstReach = cols[7] || "";
+      const stayTime = cols[8] || "";
 
       return "<tr" + (isCurrent ? " class='current'" : "") + ">" +
         "<td class='area'>" + escapeHtml(areaName) + "</td>" +
