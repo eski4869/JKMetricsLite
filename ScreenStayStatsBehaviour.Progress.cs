@@ -169,7 +169,7 @@ namespace JKMetricsLite
             return null;
         }
 
-        private Location[] LoadLocations()
+        private static Location[] LoadLocations()
         {
             try
             {

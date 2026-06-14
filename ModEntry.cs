@@ -27,6 +27,21 @@ namespace JKMetricsLite
         private static bool _settingsDirty;
         private static bool _processExitRegistered;
 
+        [BeforeLevelLoad]
+        public static void BeforeLevelLoad()
+        {
+            EnsurePreferencesLoaded();
+
+            if (_preferences.IsEnabled)
+            {
+                ScreenStayStatsBehaviour.PrepareForLevelLoad();
+            }
+            else
+            {
+                ScreenStayStatsBehaviour.ClearLevelLoadPreparation();
+            }
+        }
+
         [OnLevelStart]
         public static void OnLevelStart()
         {
@@ -298,34 +313,86 @@ namespace JKMetricsLite
 
         private int? _stateAttempt = null;
 
-        public ScreenStayStatsBehaviour()
+        private sealed class LevelLoadPreparation
         {
-            _instance = this;
+            public string OutputDir;
+            public string StatePath;
+            public string AreaBarGraphPath;
+            public string ScreenBarGraphPath;
+            public string ScreenTimelinePath;
+            public string ProgressStatusPath;
+            public string ActivitySamplesPath;
+            public Location[] Locations;
+        }
+
+        private static LevelLoadPreparation _levelLoadPreparation;
+
+        internal static void PrepareForLevelLoad()
+        {
             RegisterProcessExitHandler();
 
             string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
             WriteDefaultConfigFileIfMissing(assemblyDir);
 
-            _outputDir = ResolveOutputDir(assemblyDir);
-            Directory.CreateDirectory(_outputDir);
+            string outputDir = ResolveOutputDir(assemblyDir);
+            Directory.CreateDirectory(outputDir);
+            SetLogOutputDir(outputDir);
+
+            var preparation = new LevelLoadPreparation
+            {
+                OutputDir = outputDir,
+                StatePath = Path.Combine(outputDir, "metrics_state.tsv"),
+                AreaBarGraphPath = Path.Combine(outputDir, "area_bar_graph.tsv"),
+                ScreenBarGraphPath = Path.Combine(outputDir, "screen_bar_graph.tsv"),
+                ScreenTimelinePath = Path.Combine(outputDir, "screen_timeline.tsv"),
+                ProgressStatusPath = Path.Combine(outputDir, "progress_status.tsv"),
+                ActivitySamplesPath = Path.Combine(outputDir, "jump_activity.tsv"),
+                Locations = LoadLocations()
+            };
+
+            WriteOverlayHtmlIfMissing(outputDir, "area_name.html", LoadOverlayTemplate(AreaNameTemplateName));
+            WriteOverlayHtmlIfMissing(outputDir, "area_no.html", LoadOverlayTemplate(AreaNoTemplateName));
+            WriteOverlayHtmlIfMissing(outputDir, "area_name_speedrun.html", LoadOverlayTemplate(AreaNameSpeedrunTemplateName));
+            WriteOverlayHtmlIfMissing(outputDir, "screen_timeline.html", LoadOverlayTemplate(ScreenTimelineTemplateName));
+            WriteOverlayHtmlIfMissing(outputDir, "jump_activity.html", LoadOverlayTemplate(JumpActivityTemplateName));
+
+            _levelLoadPreparation = preparation;
+        }
+
+        internal static void ClearLevelLoadPreparation()
+        {
+            _levelLoadPreparation = null;
+        }
+
+        private static LevelLoadPreparation GetLevelLoadPreparation()
+        {
+            if (_levelLoadPreparation == null)
+            {
+                PrepareForLevelLoad();
+            }
+
+            return _levelLoadPreparation;
+        }
+
+        public ScreenStayStatsBehaviour()
+        {
+            _instance = this;
+
+            LevelLoadPreparation preparation = GetLevelLoadPreparation();
+
+            _outputDir = preparation.OutputDir;
             SetLogOutputDir(_outputDir);
 
-            _statePath = Path.Combine(_outputDir, "metrics_state.tsv");
-            _areaBarGraphPath = Path.Combine(_outputDir, "area_bar_graph.tsv");
-            _screenBarGraphPath = Path.Combine(_outputDir, "screen_bar_graph.tsv");
-            _screenTimelinePath = Path.Combine(_outputDir, "screen_timeline.tsv");
-            _progressStatusPath = Path.Combine(_outputDir, "progress_status.tsv");
-            _activitySamplesPath = Path.Combine(_outputDir, "jump_activity.tsv");
+            _statePath = preparation.StatePath;
+            _areaBarGraphPath = preparation.AreaBarGraphPath;
+            _screenBarGraphPath = preparation.ScreenBarGraphPath;
+            _screenTimelinePath = preparation.ScreenTimelinePath;
+            _progressStatusPath = preparation.ProgressStatusPath;
+            _activitySamplesPath = preparation.ActivitySamplesPath;
+            _locations = preparation.Locations ?? new Location[0];
 
-            WriteAreaNameOverlayHtml();
-            WriteAreaNoOverlayHtml();
-            WriteAreaNameSpeedrunOverlayHtml();
-            WriteScreenTimelineOverlayHtml();
-            WriteJumpActivityOverlayHtml();
             AppendActivitySampleTsv();
-
-            _locations = LoadLocations();
 
             int? currentAttempt = TryGetCurrentAttempt();
 

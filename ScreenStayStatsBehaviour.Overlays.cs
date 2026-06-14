@@ -40,7 +40,12 @@ namespace JKMetricsLite
 
         private void WriteOverlayHtml(string fileName, string html)
         {
-            string path = Path.Combine(_outputDir, fileName);
+            WriteOverlayHtmlIfMissing(_outputDir, fileName, html);
+        }
+
+        private static void WriteOverlayHtmlIfMissing(string outputDir, string fileName, string html)
+        {
+            string path = Path.Combine(outputDir, fileName);
 
             if (File.Exists(path))
             {
@@ -50,7 +55,7 @@ namespace JKMetricsLite
             File.WriteAllText(path, html, Encoding.UTF8);
         }
 
-        private string LoadOverlayTemplate(string fileName)
+        private static string LoadOverlayTemplate(string fileName)
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
             string suffix = ".Templates." + fileName;
