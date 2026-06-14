@@ -8,8 +8,9 @@ Main features:
 
 [list]
 [*]Automatically detects the current area and screen
-[*]Tracks first reach times and stay times for each area
+[*]Tracks split times and duration for each area
 [*]Tracks PB progress based on the furthest reached area/screen
+[*]Lets you exclude optional or hidden areas from displayed run metrics
 [*]Generates OBS-ready overlays for blind playthroughs, exploration, and speedruns
 [*]Provides area name, area number, speedrun-style, and screen timeline views
 [*]Saves TSV metrics that can be reviewed later or used for custom analysis
@@ -39,8 +40,8 @@ Existing overlay HTML files are not overwritten. Delete an HTML file and restart
 Run metrics are for the current attempt. They are useful for blind custom map playthroughs, general exploration, and speedruns.
 
 [list]
-[*][b]area_bar_graph.tsv[/b] - Area first reach, stay frames, and stay time data.
-[*][b]screen_bar_graph.tsv[/b] - Screen stay frames and stay time data.
+[*][b]area_bar_graph.tsv[/b] - Area split time, stay frames, and duration data.
+[*][b]screen_bar_graph.tsv[/b] - Screen stay frames and duration data.
 [*][b]screen_timeline.tsv[/b] - Screen movement history for the timeline graph.
 [*][b]progress_status.tsv[/b] - Small status file used by OBS overlays for PB display.
 [*][b]metrics_state.tsv[/b] - Saved run state used when continuing the same game.
@@ -51,7 +52,7 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 After launching the game with the mod enabled, open OBS and add a Browser Source. Enable local file mode, then select one of the generated HTML files from the JKMetricsLite output folder.
 
 [list]
-[*][b]area_name.html[/b] - Shows area names, first reach times, stay graphs, and stay times.
+[*][b]area_name.html[/b] - Shows area names, split times, stay graphs, and duration.
 [*][b]area_no.html[/b] - Shows area numbers instead of area names.
 [*][b]area_name_speedrun.html[/b] - A compact speedrun-focused area table using m s ms time format.
 [*][b]screen_timeline.html[/b] - Displays screen transitions as a real-time graph.
@@ -95,7 +96,7 @@ If multiple areas match the same screen, the area with the highest start value t
   <name>LOCATION_FALSE_KINGS_KEEP</name>
 </Location>[/code]
 
-Screens that do not belong to any defined area are ignored for PB, first reach times, and stay time totals. For example, screen 131 is not included in either area below.
+Screens that do not belong to any defined area are ignored for PB, split times, and duration totals. For example, screen 131 is not included in either area below.
 
 [code]<Location>
   <start>124</start>
@@ -112,6 +113,8 @@ Screens that do not belong to any defined area are ignored for PB, first reach t
 </Location>[/code]
 
 Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
+
+If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and turn off [b]Current Area Metrics[/b]. The area is treated like [b]Unknown[/b] for PB, area number, area name, and screen summary output. The raw area data is still kept internally, so turning [b]Current Area Metrics[/b] back on restores it to the displayed metrics.
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 

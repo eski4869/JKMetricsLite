@@ -68,7 +68,7 @@ namespace JKMetricsLite
 
             foreach (string area in _areaAppearedOrder)
             {
-                if (area == "Unknown")
+                if (!IsAreaIncludedForMetrics(area))
                 {
                     continue;
                 }
@@ -89,7 +89,7 @@ namespace JKMetricsLite
             {
                 string area = pair.Key;
 
-                if (area == "Unknown")
+                if (!IsAreaIncludedForMetrics(area))
                 {
                     continue;
                 }
@@ -113,7 +113,7 @@ namespace JKMetricsLite
             {
                 string area = GetAreaNameForScreen(screen);
 
-                if (area == "Unknown")
+                if (!IsAreaIncludedForMetrics(area))
                 {
                     continue;
                 }
@@ -178,7 +178,7 @@ namespace JKMetricsLite
 
             string areaName = GetAreaNameForScreen(screen);
 
-            if (areaName == "Unknown")
+            if (!IsAreaIncludedForMetrics(areaName))
             {
                 return "Unknown";
             }
@@ -222,7 +222,7 @@ namespace JKMetricsLite
                     _totalFrames + "\t" +
                     EscapeTsv(FormatFramesAsTimeWithMs(_totalFrames)) + "\t" +
                     _lastScreen + "\t" +
-                    EscapeTsv(_lastArea) + "\t" +
+                    EscapeTsv(GetDisplayAreaName(_lastArea)) + "\t" +
                     (_stateAttempt.HasValue ? _stateAttempt.Value.ToString() : "UNKNOWN")
                 );
 
@@ -236,6 +236,43 @@ namespace JKMetricsLite
         }
 
         private List<string> GetAreaFramesInAppearedOrder()
+        {
+            var list = new List<string>();
+
+            for (int i = 0; i < _areaAppearedOrder.Count; i++)
+            {
+                string area = _areaAppearedOrder[i];
+
+                if (!IsAreaIncludedForMetrics(area))
+                {
+                    continue;
+                }
+
+                if (_areaFrames.ContainsKey(area))
+                {
+                    list.Add(area);
+                }
+            }
+
+            foreach (KeyValuePair<string, int> pair in _areaFrames)
+            {
+                string area = pair.Key;
+
+                if (!IsAreaIncludedForMetrics(area))
+                {
+                    continue;
+                }
+
+                if (!list.Contains(area))
+                {
+                    list.Add(area);
+                }
+            }
+
+            return list;
+        }
+
+        private List<string> GetRawAreaFramesInAppearedOrder()
         {
             var list = new List<string>();
 

@@ -134,6 +134,12 @@ namespace JKMetricsLite
             return new MetricsToggle();
         }
 
+        [PauseMenuItemSetting]
+        public static CurrentAreaMetricsToggle CurrentAreaMetricsMenu(object factory, GuiFormat format)
+        {
+            return new CurrentAreaMetricsToggle();
+        }
+
         public static bool IsMetricsEnabled()
         {
             EnsurePreferencesLoaded();
@@ -255,6 +261,23 @@ namespace JKMetricsLite
         }
     }
 
+    public class CurrentAreaMetricsToggle : ITextToggle
+    {
+        public CurrentAreaMetricsToggle() : base(ScreenStayStatsBehaviour.IsCurrentAreaIncludedForMetrics())
+        {
+        }
+
+        protected override string GetName()
+        {
+            return "Current Area Metrics";
+        }
+
+        protected override void OnToggle()
+        {
+            ScreenStayStatsBehaviour.SetCurrentAreaIncludedForMetrics(toggle);
+        }
+    }
+
     public class MetricsPreferences
     {
         public bool IsEnabled { get; set; } = true;
@@ -281,6 +304,7 @@ namespace JKMetricsLite
         private readonly Dictionary<string, int> _areaFrames = new Dictionary<string, int>();
         private readonly Dictionary<string, int> _areaFirstReachedFrames = new Dictionary<string, int>();
         private readonly List<string> _areaAppearedOrder = new List<string>();
+        private readonly HashSet<string> _excludedAreas = new HashSet<string>();
 
         // Area-internal screen order is also based on first-reached order.
         private readonly Dictionary<string, List<int>> _areaScreenAppearedOrder =

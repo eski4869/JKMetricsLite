@@ -10,6 +10,67 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
+        internal static bool IsCurrentAreaIncludedForMetrics()
+        {
+            if (_instance == null)
+            {
+                return true;
+            }
+
+            return _instance.IsCurrentAreaIncludedForMetricsInstance();
+        }
+
+        internal static void SetCurrentAreaIncludedForMetrics(bool isIncluded)
+        {
+            if (_instance == null)
+            {
+                return;
+            }
+
+            _instance.SetCurrentAreaIncludedForMetricsInstance(isIncluded);
+        }
+
+        private bool IsCurrentAreaIncludedForMetricsInstance()
+        {
+            return IsAreaIncludedForMetrics(_lastArea);
+        }
+
+        private void SetCurrentAreaIncludedForMetricsInstance(bool isIncluded)
+        {
+            if (string.IsNullOrEmpty(_lastArea) || _lastArea == "Unknown")
+            {
+                return;
+            }
+
+            bool changed = isIncluded
+                ? _excludedAreas.Remove(_lastArea)
+                : _excludedAreas.Add(_lastArea);
+
+            if (!changed)
+            {
+                return;
+            }
+
+            RecalculatePb();
+            WriteOutputFiles(true);
+            SaveState();
+        }
+
+        private bool IsAreaIncludedForMetrics(string areaName)
+        {
+            if (string.IsNullOrEmpty(areaName) || areaName == "Unknown")
+            {
+                return false;
+            }
+
+            return !_excludedAreas.Contains(areaName);
+        }
+
+        private string GetDisplayAreaName(string areaName)
+        {
+            return IsAreaIncludedForMetrics(areaName) ? areaName : "Unknown";
+        }
+
         private void RegisterAreaScreenIfNeeded(string areaName, int screen)
         {
             if (areaName == "Unknown")
@@ -30,7 +91,7 @@ namespace JKMetricsLite
 
         private void UpdatePbIfNeeded(int screen, string areaName)
         {
-            if (areaName == "Unknown")
+            if (!IsAreaIncludedForMetrics(areaName))
             {
                 return;
             }

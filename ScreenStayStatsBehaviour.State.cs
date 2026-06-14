@@ -21,6 +21,7 @@ namespace JKMetricsLite
             _areaFirstReachedFrames.Clear();
             _areaAppearedOrder.Clear();
             _areaScreenAppearedOrder.Clear();
+            _excludedAreas.Clear();
 
             _totalFrames = 0;
             _outputCounter = 0;
@@ -212,6 +213,15 @@ namespace JKMetricsLite
                             RegisterAreaScreenIfNeeded(area, screen);
                         }
                     }
+                    else if (parts[0] == "EXCLUDED_AREA" && parts.Length >= 2)
+                    {
+                        string area = DecodeText(parts[1]);
+
+                        if (area != "Unknown")
+                        {
+                            _excludedAreas.Add(area);
+                        }
+                    }
                 }
 
                 // For old state files without AREA_SCREEN_ORDER, rebuild a fallback order.
@@ -237,7 +247,7 @@ namespace JKMetricsLite
 
         private void RebuildAreaScreenOrderFallbackIfNeeded()
         {
-            foreach (string area in GetAreaFramesInAppearedOrder())
+            foreach (string area in GetRawAreaFramesInAppearedOrder())
             {
                 if (!_areaScreenAppearedOrder.ContainsKey(area))
                 {
@@ -270,6 +280,11 @@ namespace JKMetricsLite
                 return;
             }
 
+            RecalculatePb();
+        }
+
+        private void RecalculatePb()
+        {
             _pbArea = "";
             _pbAreaIndex = -1;
             _pbScreenInArea = -1;
@@ -277,7 +292,7 @@ namespace JKMetricsLite
 
             foreach (string area in _areaAppearedOrder)
             {
-                if (area == "Unknown")
+                if (!IsAreaIncludedForMetrics(area))
                 {
                     continue;
                 }
@@ -311,6 +326,11 @@ namespace JKMetricsLite
             }
 
             if (string.IsNullOrEmpty(_pbArea) || _pbArea == "Unknown")
+            {
+                return false;
+            }
+
+            if (!IsAreaIncludedForMetrics(_pbArea))
             {
                 return false;
             }
@@ -366,7 +386,7 @@ namespace JKMetricsLite
             {
                 var sb = new StringBuilder();
 
-                sb.AppendLine("VERSION\t3");
+                sb.AppendLine("VERSION\t4");
                 sb.AppendLine("ATTEMPT\t" + (_stateAttempt.HasValue ? _stateAttempt.Value.ToString() : "UNKNOWN"));
                 sb.AppendLine("TOTAL\t" + _totalFrames);
                 sb.AppendLine("LAST\t" + _lastScreen + "\t" + EncodeText(_lastArea));
@@ -442,6 +462,16 @@ namespace JKMetricsLite
                             screens[i]
                         );
                     }
+                }
+
+                foreach (string area in _excludedAreas)
+                {
+                    if (area == "Unknown")
+                    {
+                        continue;
+                    }
+
+                    sb.AppendLine("EXCLUDED_AREA\t" + EncodeText(area));
                 }
 
                 File.WriteAllText(_statePath, sb.ToString(), Encoding.UTF8);

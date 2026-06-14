@@ -7,8 +7,9 @@ It automatically records useful run and activity data while you play.
 Main features:
 
 - Automatically detects the current area and screen
-- Tracks first reach times and stay times for each area
+- Tracks split times and duration for each area
 - Tracks PB progress based on the furthest reached area/screen
+- Lets you exclude optional or hidden areas from displayed run metrics
 - Generates OBS-ready overlays for blind playthroughs, exploration, and speedruns
 - Provides area name, area number, speedrun-style, and screen timeline views
 - Saves TSV metrics that can be reviewed later or used for custom analysis
@@ -36,8 +37,8 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 
 | File | Description | Update timing |
 | --- | --- | --- |
-| `area_bar_graph.tsv` | Area first reach, stay frames, and stay time data. | About every 60 frames. |
-| `screen_bar_graph.tsv` | Screen stay frames and stay time data. | About every 60 frames. |
+| `area_bar_graph.tsv` | Area split time, stay frames, and duration data. | About every 60 frames. |
+| `screen_bar_graph.tsv` | Screen stay frames and duration data. | About every 60 frames. |
 | `screen_timeline.tsv` | Screen movement history for the timeline graph. | Appended about every 60 frames. Reset with new metrics. |
 | `progress_status.tsv` | Small status file used by OBS overlays for PB display. | About every 60 frames. |
 | `metrics_state.tsv` | Saved run state used when continuing the same game. | About every 3600 frames and on exit. |
@@ -48,7 +49,7 @@ Add a Browser Source in OBS, enable local file mode, and select one of the gener
 
 `area_name.html`
 
-Automatically detects area names and displays first reach time, stay graph, and stay time. Use this for blind custom map playthroughs or general exploration.
+Automatically detects area names and displays split time, stay graph, and duration. Use this for blind custom map playthroughs or general exploration.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/5ba263eb-424e-4c66-8622-7cced2ad0310" />
 
@@ -113,7 +114,7 @@ If multiple areas match the same screen, the area with the highest `start` value
 </Location>
 ```
 
-Screens that do not belong to any defined area are ignored for PB, first reach times, and stay time totals. For example, screen 131 is not included in either area below.
+Screens that do not belong to any defined area are ignored for PB, split times, and duration totals. For example, screen 131 is not included in either area below.
 
 ```xml
 <Location>
@@ -132,6 +133,8 @@ Screens that do not belong to any defined area are ignored for PB, first reach t
 ```
 
 Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
+
+If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and turn off `Current Area Metrics`. The area is treated like `Unknown` for PB, area number, area name, and screen summary output. The raw area data is still kept internally, so turning `Current Area Metrics` back on restores it to the displayed metrics.
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
