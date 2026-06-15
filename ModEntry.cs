@@ -269,7 +269,7 @@ namespace JKMetricsLite
 
         protected override string GetName()
         {
-            return "Exclude " + ScreenStayStatsBehaviour.GetCurrentAreaName() + " from Metrics";
+            return "Exclude This Area from Metrics";
         }
 
         protected override bool CanChange()

@@ -10,16 +10,6 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
-        internal static string GetCurrentAreaName()
-        {
-            if (_instance == null)
-            {
-                return "Unknown";
-            }
-
-            return _instance._lastArea;
-        }
-
         internal static bool IsCurrentAreaExcludedFromMetrics()
         {
             if (_instance == null)
