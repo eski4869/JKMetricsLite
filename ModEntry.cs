@@ -134,6 +134,12 @@ namespace JKMetricsLite
             return new MetricsToggle();
         }
 
+        [PauseMenuItemSetting]
+        public static CurrentAreaMetricsToggle CurrentAreaMetricsMenu(object factory, GuiFormat format)
+        {
+            return new CurrentAreaMetricsToggle();
+        }
+
         public static bool IsMetricsEnabled()
         {
             EnsurePreferencesLoaded();
@@ -255,6 +261,34 @@ namespace JKMetricsLite
         }
     }
 
+    public class CurrentAreaMetricsToggle : ITextToggle
+    {
+        public CurrentAreaMetricsToggle() : base(ScreenStayStatsBehaviour.IsCurrentAreaExcludedFromMetrics())
+        {
+        }
+
+        public override void Draw(int x, int y, bool selected)
+        {
+            OverrideToggle(ScreenStayStatsBehaviour.IsCurrentAreaExcludedFromMetrics());
+            base.Draw(x, y, selected);
+        }
+
+        protected override string GetName()
+        {
+            return "Exclude This Area";
+        }
+
+        protected override bool CanChange()
+        {
+            return ScreenStayStatsBehaviour.CanChangeCurrentAreaMetricsExclusion();
+        }
+
+        protected override void OnToggle()
+        {
+            ScreenStayStatsBehaviour.SetCurrentAreaExcludedFromMetrics(toggle);
+        }
+    }
+
     public class MetricsPreferences
     {
         public bool IsEnabled { get; set; } = true;
@@ -269,7 +303,6 @@ namespace JKMetricsLite
         private const int OutputIntervalFrames = 60;
         private const int StateSaveIntervalFrames = 3600;
         private const int ActivitySampleIntervalFrames = 3600;
-        private const int MaxBarWidth = 30;
         private const string OutputFolderName = "JKMetricsLite";
         private const string ConfigFileName = "JKMetricsLite.env";
         private const string OutputDirKey = "OUTPUT_DIR";
@@ -281,7 +314,10 @@ namespace JKMetricsLite
 
         private readonly Dictionary<string, int> _areaFrames = new Dictionary<string, int>();
         private readonly Dictionary<string, int> _areaFirstReachedFrames = new Dictionary<string, int>();
+        private readonly Dictionary<string, long> _areaFirstReachedMilliseconds =
+            new Dictionary<string, long>();
         private readonly List<string> _areaAppearedOrder = new List<string>();
+        private readonly HashSet<string> _excludedAreas = new HashSet<string>();
 
         // Area-internal screen order is also based on first-reached order.
         private readonly Dictionary<string, List<int>> _areaScreenAppearedOrder =
@@ -322,7 +358,6 @@ namespace JKMetricsLite
             public string ScreenTimelinePath;
             public string ProgressStatusPath;
             public string ActivitySamplesPath;
-            public Location[] Locations;
         }
 
         private static LevelLoadPreparation _levelLoadPreparation;
@@ -347,8 +382,7 @@ namespace JKMetricsLite
                 ScreenBarGraphPath = Path.Combine(outputDir, "screen_bar_graph.tsv"),
                 ScreenTimelinePath = Path.Combine(outputDir, "screen_timeline.tsv"),
                 ProgressStatusPath = Path.Combine(outputDir, "progress_status.tsv"),
-                ActivitySamplesPath = Path.Combine(outputDir, "jump_activity.tsv"),
-                Locations = LoadLocations()
+                ActivitySamplesPath = Path.Combine(outputDir, "jump_activity.tsv")
             };
 
             WriteOverlayHtmlIfMissing(outputDir, "area_name.html", LoadOverlayTemplate(AreaNameTemplateName));
@@ -390,7 +424,7 @@ namespace JKMetricsLite
             _screenTimelinePath = preparation.ScreenTimelinePath;
             _progressStatusPath = preparation.ProgressStatusPath;
             _activitySamplesPath = preparation.ActivitySamplesPath;
-            _locations = preparation.Locations ?? new Location[0];
+            _locations = LoadLocations();
 
             AppendActivitySampleTsv();
 
@@ -577,7 +611,7 @@ namespace JKMetricsLite
 
                     if (!_areaFirstReachedFrames.ContainsKey(areaName))
                     {
-                        _areaFirstReachedFrames[areaName] = _totalFrames;
+                        RecordAreaFirstReach(areaName);
                     }
 
                     if (!_areaAppearedOrder.Contains(areaName))

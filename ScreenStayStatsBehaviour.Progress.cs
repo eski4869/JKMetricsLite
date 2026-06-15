@@ -10,6 +10,94 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
+        internal static bool IsCurrentAreaExcludedFromMetrics()
+        {
+            if (_instance == null)
+            {
+                return false;
+            }
+
+            return !_instance.IsAreaIncludedForMetrics(_instance._lastArea);
+        }
+
+        internal static bool CanChangeCurrentAreaMetricsExclusion()
+        {
+            return _instance != null &&
+                !string.IsNullOrEmpty(_instance._lastArea) &&
+                _instance._lastArea != "Unknown";
+        }
+
+        internal static void SetCurrentAreaExcludedFromMetrics(bool isExcluded)
+        {
+            if (_instance == null)
+            {
+                return;
+            }
+
+            _instance.SetCurrentAreaExcludedFromMetricsInstance(isExcluded);
+        }
+
+        private void SetCurrentAreaExcludedFromMetricsInstance(bool isExcluded)
+        {
+            if (string.IsNullOrEmpty(_lastArea) || _lastArea == "Unknown")
+            {
+                return;
+            }
+
+            bool changed = isExcluded
+                ? _excludedAreas.Add(_lastArea)
+                : _excludedAreas.Remove(_lastArea);
+
+            if (!changed)
+            {
+                return;
+            }
+
+            RecalculatePb();
+            WriteOutputFiles(true);
+            SaveState();
+        }
+
+        private bool IsAreaIncludedForMetrics(string areaName)
+        {
+            if (string.IsNullOrEmpty(areaName) || areaName == "Unknown")
+            {
+                return false;
+            }
+
+            return !_excludedAreas.Contains(areaName);
+        }
+
+        private string GetDisplayAreaName(string areaName)
+        {
+            return IsAreaIncludedForMetrics(areaName) ? areaName : "Unknown";
+        }
+
+        private void RecordAreaFirstReach(string areaName)
+        {
+            int firstReachedFrames = _totalFrames;
+            long firstReachedMilliseconds = FramesToMilliseconds(firstReachedFrames);
+
+            TimeSpan? currentRunTime = TryGetCurrentRunTime();
+
+            if (currentRunTime.HasValue && currentRunTime.Value.TotalMilliseconds >= 0)
+            {
+                firstReachedMilliseconds = (long)Math.Round(currentRunTime.Value.TotalMilliseconds);
+
+                double secondsPerFrame = GetSecondsPerFrame();
+
+                if (secondsPerFrame > 0)
+                {
+                    firstReachedFrames = (int)Math.Round(
+                        currentRunTime.Value.TotalSeconds / secondsPerFrame
+                    );
+                }
+            }
+
+            _areaFirstReachedFrames[areaName] = firstReachedFrames;
+            _areaFirstReachedMilliseconds[areaName] = firstReachedMilliseconds;
+        }
+
         private void RegisterAreaScreenIfNeeded(string areaName, int screen)
         {
             if (areaName == "Unknown")
@@ -30,7 +118,7 @@ namespace JKMetricsLite
 
         private void UpdatePbIfNeeded(int screen, string areaName)
         {
-            if (areaName == "Unknown")
+            if (!IsAreaIncludedForMetrics(areaName))
             {
                 return;
             }
@@ -102,17 +190,54 @@ namespace JKMetricsLite
 
         private TimeSpan? TryGetCurrentRunTime()
         {
-            PlayerStats? permanent = TryGetPlayerStats("PermanentPlayerStats");
-            PlayerStats? snapshot = TryGetPlayerStats("PlayerStatsAttemptSnapshot");
-
-            if (permanent.HasValue && snapshot.HasValue)
+            try
             {
-                TimeSpan time = permanent.Value.timeSpan - snapshot.Value.timeSpan;
+                Type managerType = typeof(PlayerStats).Assembly.GetType(
+                    "JumpKing.MiscSystems.Achievements.AchievementManager"
+                );
 
-                if (time.TotalMilliseconds >= 0)
+                if (managerType == null)
                 {
-                    return time;
+                    return null;
                 }
+
+                FieldInfo instanceField = managerType.GetField(
+                    "instance",
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                object manager = instanceField == null ? null : instanceField.GetValue(null);
+
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                MethodInfo getCurrentStatsMethod = managerType.GetMethod(
+                    "GetCurrentStats",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                if (getCurrentStatsMethod == null)
+                {
+                    return null;
+                }
+
+                object statsObject = getCurrentStatsMethod.Invoke(manager, null);
+
+                if (statsObject is PlayerStats)
+                {
+                    TimeSpan time = ((PlayerStats)statsObject).timeSpan;
+
+                    if (time.TotalMilliseconds >= 0)
+                    {
+                        return time;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Get current run time", ex);
             }
 
             return null;
@@ -274,14 +399,44 @@ namespace JKMetricsLite
                 return "Unknown";
             }
 
-            string name = rawName;
+            string name = RemoveAreaFormattingTags(rawName).Trim();
 
             if (name.StartsWith("LOCATION_"))
             {
                 name = name.Substring("LOCATION_".Length);
             }
 
-            return name.Replace('_', ' ');
+            name = name.Replace('_', ' ').Trim();
+
+            return name.Length == 0 ? "Unknown" : name;
+        }
+
+        private string RemoveAreaFormattingTags(string value)
+        {
+            var result = new StringBuilder();
+            int index = 0;
+
+            while (index < value.Length)
+            {
+                if (value[index] != '{')
+                {
+                    result.Append(value[index]);
+                    index++;
+                    continue;
+                }
+
+                int closingBraceIndex = value.IndexOf('}', index + 1);
+
+                if (closingBraceIndex < 0)
+                {
+                    result.Append(value.Substring(index));
+                    break;
+                }
+
+                index = closingBraceIndex + 1;
+            }
+
+            return result.ToString();
         }
     }
 }

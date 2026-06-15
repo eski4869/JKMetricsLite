@@ -12,11 +12,10 @@ namespace JKMetricsLite
     {
         private void WriteAreaBarGraphTsv()
         {
-            int maxFrames = GetMaxAreaFrames();
             Dictionary<string, string> areaIndexMap = BuildAreaIndexMap();
 
             var sb = new StringBuilder();
-            sb.AppendLine("area_index\tarea_name\tfirst_reach\tstay_graph\tstay_time\tis_current\tfirst_reach_speedrun\tstay_time_speedrun");
+            sb.AppendLine("area_index\tarea_name\tfirst_reach_frames\tfirst_reach\tstay_frames\tstay_time\tis_current\tfirst_reach_speedrun\tstay_time_speedrun");
 
             foreach (string area in GetAreaFramesInAppearedOrder())
             {
@@ -29,12 +28,19 @@ namespace JKMetricsLite
 
                 string firstReachedTime = "-";
                 string firstReachedSpeedrunTime = "-";
+                string firstReachedFrames = "";
 
                 if (_areaFirstReachedFrames.ContainsKey(area))
                 {
                     int firstFrames = _areaFirstReachedFrames[area];
-                    firstReachedTime = FormatFramesAsTime(firstFrames);
-                    firstReachedSpeedrunTime = FormatFramesAsSpeedrunTime(firstFrames);
+                    long firstMilliseconds = _areaFirstReachedMilliseconds.ContainsKey(area)
+                        ? _areaFirstReachedMilliseconds[area]
+                        : FramesToMilliseconds(firstFrames);
+
+                    firstReachedFrames = firstFrames.ToString();
+                    firstReachedTime = FormatMillisecondsAsTime(firstMilliseconds);
+                    firstReachedSpeedrunTime =
+                        FormatMillisecondsAsSpeedrunTime(firstMilliseconds);
                 }
 
                 string areaIndex = "Unknown";
@@ -47,8 +53,9 @@ namespace JKMetricsLite
                 sb.AppendLine(
                     EscapeTsv(areaIndex) + "\t" +
                     EscapeTsv(area) + "\t" +
+                    firstReachedFrames + "\t" +
                     EscapeTsv(firstReachedTime) + "\t" +
-                    EscapeTsv(BuildBar(frames, maxFrames)) + "\t" +
+                    frames + "\t" +
                     EscapeTsv(FormatFramesAsTime(frames)) + "\t" +
                     (area == _lastArea ? "1" : "0") + "\t" +
                     EscapeTsv(firstReachedSpeedrunTime) + "\t" +
@@ -66,7 +73,7 @@ namespace JKMetricsLite
 
             foreach (string area in _areaAppearedOrder)
             {
-                if (area == "Unknown")
+                if (!IsAreaIncludedForMetrics(area))
                 {
                     continue;
                 }
@@ -87,7 +94,7 @@ namespace JKMetricsLite
             {
                 string area = pair.Key;
 
-                if (area == "Unknown")
+                if (!IsAreaIncludedForMetrics(area))
                 {
                     continue;
                 }
@@ -104,31 +111,14 @@ namespace JKMetricsLite
 
         private void WriteScreenBarGraphTsv()
         {
-            int maxFrames = 0;
-
-            for (int screen = MinScreen; screen <= MaxScreen; screen++)
-            {
-                string area = GetAreaNameForScreen(screen);
-
-                if (area == "Unknown")
-                {
-                    continue;
-                }
-
-                if (_screenFrames[screen] > maxFrames)
-                {
-                    maxFrames = _screenFrames[screen];
-                }
-            }
-
             var sb = new StringBuilder();
-            sb.AppendLine("screen\tstay_graph\tstay_time\tarea\tis_current");
+            sb.AppendLine("screen\tstay_frames\tstay_time\tarea\tis_current");
 
             for (int screen = MinScreen; screen <= MaxScreen; screen++)
             {
                 string area = GetAreaNameForScreen(screen);
 
-                if (area == "Unknown")
+                if (!IsAreaIncludedForMetrics(area))
                 {
                     continue;
                 }
@@ -137,7 +127,7 @@ namespace JKMetricsLite
 
                 sb.AppendLine(
                     screen + "\t" +
-                    EscapeTsv(BuildBar(frames, maxFrames)) + "\t" +
+                    frames + "\t" +
                     EscapeTsv(FormatFramesAsTime(frames)) + "\t" +
                     EscapeTsv(area) + "\t" +
                     (screen == _lastScreen ? "1" : "0")
@@ -193,7 +183,7 @@ namespace JKMetricsLite
 
             string areaName = GetAreaNameForScreen(screen);
 
-            if (areaName == "Unknown")
+            if (!IsAreaIncludedForMetrics(areaName))
             {
                 return "Unknown";
             }
@@ -237,7 +227,7 @@ namespace JKMetricsLite
                     _totalFrames + "\t" +
                     EscapeTsv(FormatFramesAsTimeWithMs(_totalFrames)) + "\t" +
                     _lastScreen + "\t" +
-                    EscapeTsv(_lastArea) + "\t" +
+                    EscapeTsv(GetDisplayAreaName(_lastArea)) + "\t" +
                     (_stateAttempt.HasValue ? _stateAttempt.Value.ToString() : "UNKNOWN")
                 );
 
@@ -250,39 +240,44 @@ namespace JKMetricsLite
             }
         }
 
-        private int GetMaxAreaFrames()
+        private List<string> GetAreaFramesInAppearedOrder()
         {
-            int maxFrames = 0;
+            var list = new List<string>();
 
-            foreach (KeyValuePair<string, int> pair in _areaFrames)
+            for (int i = 0; i < _areaAppearedOrder.Count; i++)
             {
-                if (pair.Key == "Unknown")
+                string area = _areaAppearedOrder[i];
+
+                if (!IsAreaIncludedForMetrics(area))
                 {
                     continue;
                 }
 
-                if (pair.Value > maxFrames)
+                if (_areaFrames.ContainsKey(area))
                 {
-                    maxFrames = pair.Value;
+                    list.Add(area);
                 }
             }
 
-            return maxFrames;
-        }
-
-        private string BuildBar(int frames, int maxFrames)
-        {
-            int barWidth = 0;
-
-            if (maxFrames > 0)
+            foreach (KeyValuePair<string, int> pair in _areaFrames)
             {
-                barWidth = (int)Math.Round(frames * MaxBarWidth / (double)maxFrames);
+                string area = pair.Key;
+
+                if (!IsAreaIncludedForMetrics(area))
+                {
+                    continue;
+                }
+
+                if (!list.Contains(area))
+                {
+                    list.Add(area);
+                }
             }
 
-            return new string('#', barWidth);
+            return list;
         }
 
-        private List<string> GetAreaFramesInAppearedOrder()
+        private List<string> GetRawAreaFramesInAppearedOrder()
         {
             var list = new List<string>();
 

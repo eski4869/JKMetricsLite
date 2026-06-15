@@ -60,6 +60,31 @@ namespace JKMetricsLite
                    time.Milliseconds.ToString("000") + "ms";
         }
 
+        private long FramesToMilliseconds(int frames)
+        {
+            return (long)Math.Round(frames * GetSecondsPerFrame() * 1000);
+        }
+
+        private string FormatMillisecondsAsTime(long milliseconds)
+        {
+            TimeSpan time = TimeSpan.FromMilliseconds(milliseconds);
+            int totalHours = (int)Math.Floor(time.TotalHours);
+
+            return totalHours.ToString().PadLeft(2) + "h " +
+                   time.Minutes.ToString().PadLeft(2) + "m " +
+                   time.Seconds.ToString().PadLeft(2) + "s";
+        }
+
+        private string FormatMillisecondsAsSpeedrunTime(long milliseconds)
+        {
+            TimeSpan time = TimeSpan.FromMilliseconds(milliseconds);
+            int totalMinutes = (int)Math.Floor(time.TotalMinutes);
+
+            return totalMinutes.ToString().PadLeft(3) + "m " +
+                   time.Seconds.ToString().PadLeft(2) + "s " +
+                   time.Milliseconds.ToString("000") + "ms";
+        }
+
         private string EscapeTsv(string value)
         {
             if (value == null)
