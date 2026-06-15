@@ -14,7 +14,7 @@ namespace JKMetricsLite
         {
             if (_instance == null)
             {
-                return true;
+                return false;
             }
 
             return !_instance.IsAreaIncludedForMetrics(_instance._lastArea);

@@ -267,6 +267,12 @@ namespace JKMetricsLite
         {
         }
 
+        public override void Draw(int x, int y, bool selected)
+        {
+            OverrideToggle(ScreenStayStatsBehaviour.IsCurrentAreaExcludedFromMetrics());
+            base.Draw(x, y, selected);
+        }
+
         protected override string GetName()
         {
             return "Exclude This Area";
