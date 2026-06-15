@@ -19,6 +19,7 @@ namespace JKMetricsLite
 
             _areaFrames.Clear();
             _areaFirstReachedFrames.Clear();
+            _areaFirstReachedMilliseconds.Clear();
             _areaAppearedOrder.Clear();
             _areaScreenAppearedOrder.Clear();
             _excludedAreas.Clear();
@@ -179,6 +180,19 @@ namespace JKMetricsLite
                         {
                             _areaFrames[area] = frames;
                             _areaFirstReachedFrames[area] = firstReachedFrames;
+
+                            long firstReachedMilliseconds;
+
+                            if (parts.Length >= 5 &&
+                                long.TryParse(parts[4], out firstReachedMilliseconds))
+                            {
+                                _areaFirstReachedMilliseconds[area] = firstReachedMilliseconds;
+                            }
+                            else
+                            {
+                                _areaFirstReachedMilliseconds[area] =
+                                    FramesToMilliseconds(firstReachedFrames);
+                            }
                         }
                     }
                     else if (parts[0] == "ORDER" && parts.Length >= 2)
@@ -386,7 +400,7 @@ namespace JKMetricsLite
             {
                 var sb = new StringBuilder();
 
-                sb.AppendLine("VERSION\t4");
+                sb.AppendLine("VERSION\t5");
                 sb.AppendLine("ATTEMPT\t" + (_stateAttempt.HasValue ? _stateAttempt.Value.ToString() : "UNKNOWN"));
                 sb.AppendLine("TOTAL\t" + _totalFrames);
                 sb.AppendLine("LAST\t" + _lastScreen + "\t" + EncodeText(_lastArea));
@@ -417,17 +431,28 @@ namespace JKMetricsLite
 
                     int frames = pair.Value;
                     int firstReachedFrames = 0;
+                    long firstReachedMilliseconds = 0;
 
                     if (_areaFirstReachedFrames.ContainsKey(area))
                     {
                         firstReachedFrames = _areaFirstReachedFrames[area];
                     }
 
+                    if (_areaFirstReachedMilliseconds.ContainsKey(area))
+                    {
+                        firstReachedMilliseconds = _areaFirstReachedMilliseconds[area];
+                    }
+                    else
+                    {
+                        firstReachedMilliseconds = FramesToMilliseconds(firstReachedFrames);
+                    }
+
                     sb.AppendLine(
                         "AREA\t" +
                         EncodeText(area) + "\t" +
                         frames + "\t" +
-                        firstReachedFrames
+                        firstReachedFrames + "\t" +
+                        firstReachedMilliseconds
                     );
                 }
 

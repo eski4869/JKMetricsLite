@@ -314,6 +314,8 @@ namespace JKMetricsLite
 
         private readonly Dictionary<string, int> _areaFrames = new Dictionary<string, int>();
         private readonly Dictionary<string, int> _areaFirstReachedFrames = new Dictionary<string, int>();
+        private readonly Dictionary<string, long> _areaFirstReachedMilliseconds =
+            new Dictionary<string, long>();
         private readonly List<string> _areaAppearedOrder = new List<string>();
         private readonly HashSet<string> _excludedAreas = new HashSet<string>();
 
@@ -609,7 +611,7 @@ namespace JKMetricsLite
 
                     if (!_areaFirstReachedFrames.ContainsKey(areaName))
                     {
-                        _areaFirstReachedFrames[areaName] = _totalFrames;
+                        RecordAreaFirstReach(areaName);
                     }
 
                     if (!_areaAppearedOrder.Contains(areaName))

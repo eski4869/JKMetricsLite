@@ -138,6 +138,8 @@ If you enter an optional or hidden area that you do not want in the displayed ru
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
+Split times are captured from the game's run timer. Duration is counted separately from the frames processed by JK Metrics Lite.
+
 
 ## Reset Metrics
 

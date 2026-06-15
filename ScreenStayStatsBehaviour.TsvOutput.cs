@@ -33,9 +33,14 @@ namespace JKMetricsLite
                 if (_areaFirstReachedFrames.ContainsKey(area))
                 {
                     int firstFrames = _areaFirstReachedFrames[area];
+                    long firstMilliseconds = _areaFirstReachedMilliseconds.ContainsKey(area)
+                        ? _areaFirstReachedMilliseconds[area]
+                        : FramesToMilliseconds(firstFrames);
+
                     firstReachedFrames = firstFrames.ToString();
-                    firstReachedTime = FormatFramesAsTime(firstFrames);
-                    firstReachedSpeedrunTime = FormatFramesAsSpeedrunTime(firstFrames);
+                    firstReachedTime = FormatMillisecondsAsTime(firstMilliseconds);
+                    firstReachedSpeedrunTime =
+                        FormatMillisecondsAsSpeedrunTime(firstMilliseconds);
                 }
 
                 string areaIndex = "Unknown";

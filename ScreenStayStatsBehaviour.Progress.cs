@@ -73,6 +73,31 @@ namespace JKMetricsLite
             return IsAreaIncludedForMetrics(areaName) ? areaName : "Unknown";
         }
 
+        private void RecordAreaFirstReach(string areaName)
+        {
+            int firstReachedFrames = _totalFrames;
+            long firstReachedMilliseconds = FramesToMilliseconds(firstReachedFrames);
+
+            TimeSpan? currentRunTime = TryGetCurrentRunTime();
+
+            if (currentRunTime.HasValue && currentRunTime.Value.TotalMilliseconds >= 0)
+            {
+                firstReachedMilliseconds = (long)Math.Round(currentRunTime.Value.TotalMilliseconds);
+
+                double secondsPerFrame = GetSecondsPerFrame();
+
+                if (secondsPerFrame > 0)
+                {
+                    firstReachedFrames = (int)Math.Round(
+                        currentRunTime.Value.TotalSeconds / secondsPerFrame
+                    );
+                }
+            }
+
+            _areaFirstReachedFrames[areaName] = firstReachedFrames;
+            _areaFirstReachedMilliseconds[areaName] = firstReachedMilliseconds;
+        }
+
         private void RegisterAreaScreenIfNeeded(string areaName, int screen)
         {
             if (areaName == "Unknown")
