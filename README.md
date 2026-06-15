@@ -134,7 +134,7 @@ Screens that do not belong to any defined area are ignored for PB, split times, 
 
 Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
 
-If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and enable `Exclude This Area from Metrics`. The area is treated like `Unknown` for PB, area number, area name, and screen summary output. The raw area data is still kept internally, so disabling the option restores it to the displayed metrics. In an `Unknown` area, the option is shown as checked and cannot be changed because that area is already excluded by definition.
+If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and enable `Exclude This Area`. The area is treated like `Unknown` for PB, area number, area name, and screen summary output. The raw area data is still kept internally, so disabling the option restores it to the displayed metrics. In an `Unknown` area, the option is shown as checked and cannot be changed because that area is already excluded by definition.
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 

@@ -269,7 +269,7 @@ namespace JKMetricsLite
 
         protected override string GetName()
         {
-            return "Exclude This Area from Metrics";
+            return "Exclude This Area";
         }
 
         protected override bool CanChange()
