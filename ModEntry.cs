@@ -345,7 +345,6 @@ namespace JKMetricsLite
             public string ScreenTimelinePath;
             public string ProgressStatusPath;
             public string ActivitySamplesPath;
-            public Location[] Locations;
         }
 
         private static LevelLoadPreparation _levelLoadPreparation;
@@ -370,8 +369,7 @@ namespace JKMetricsLite
                 ScreenBarGraphPath = Path.Combine(outputDir, "screen_bar_graph.tsv"),
                 ScreenTimelinePath = Path.Combine(outputDir, "screen_timeline.tsv"),
                 ProgressStatusPath = Path.Combine(outputDir, "progress_status.tsv"),
-                ActivitySamplesPath = Path.Combine(outputDir, "jump_activity.tsv"),
-                Locations = LoadLocations()
+                ActivitySamplesPath = Path.Combine(outputDir, "jump_activity.tsv")
             };
 
             WriteOverlayHtmlIfMissing(outputDir, "area_name.html", LoadOverlayTemplate(AreaNameTemplateName));
@@ -413,7 +411,7 @@ namespace JKMetricsLite
             _screenTimelinePath = preparation.ScreenTimelinePath;
             _progressStatusPath = preparation.ProgressStatusPath;
             _activitySamplesPath = preparation.ActivitySamplesPath;
-            _locations = preparation.Locations ?? new Location[0];
+            _locations = LoadLocations();
 
             AppendActivitySampleTsv();
 
