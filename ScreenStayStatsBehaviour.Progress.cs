@@ -190,17 +190,54 @@ namespace JKMetricsLite
 
         private TimeSpan? TryGetCurrentRunTime()
         {
-            PlayerStats? permanent = TryGetPlayerStats("PermanentPlayerStats");
-            PlayerStats? snapshot = TryGetPlayerStats("PlayerStatsAttemptSnapshot");
-
-            if (permanent.HasValue && snapshot.HasValue)
+            try
             {
-                TimeSpan time = permanent.Value.timeSpan - snapshot.Value.timeSpan;
+                Type managerType = typeof(PlayerStats).Assembly.GetType(
+                    "JumpKing.MiscSystems.Achievements.AchievementManager"
+                );
 
-                if (time.TotalMilliseconds >= 0)
+                if (managerType == null)
                 {
-                    return time;
+                    return null;
                 }
+
+                FieldInfo instanceField = managerType.GetField(
+                    "instance",
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                object manager = instanceField == null ? null : instanceField.GetValue(null);
+
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                MethodInfo getCurrentStatsMethod = managerType.GetMethod(
+                    "GetCurrentStats",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                if (getCurrentStatsMethod == null)
+                {
+                    return null;
+                }
+
+                object statsObject = getCurrentStatsMethod.Invoke(manager, null);
+
+                if (statsObject is PlayerStats)
+                {
+                    TimeSpan time = ((PlayerStats)statsObject).timeSpan;
+
+                    if (time.TotalMilliseconds >= 0)
+                    {
+                        return time;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Get current run time", ex);
             }
 
             return null;
