@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>JK Metrics Lite Jump Activity</title>
+  <title>JK Metrics Lite Recap</title>
   <style>
     :root {
       --bg: #101216;
@@ -98,7 +98,7 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 12px;
       margin-bottom: 18px;
     }
@@ -231,8 +231,8 @@
 <div class="shell">
   <header>
     <div>
-      <h1>Jump Activity</h1>
-      <div id="status" class="sub">Choose jump_activity.tsv to render the sample data.</div>
+      <h1>Recap</h1>
+      <div id="status" class="sub">Choose total_stats.tsv to render the sample data.</div>
     </div>
     <div class="controls">
       <input id="fileInput" type="file" accept=".tsv,text/tab-separated-values,text/plain">
@@ -246,7 +246,13 @@
     <div class="metric"><span class="label">Total jumps</span><strong id="totalJumps">-</strong></div>
     <div class="metric"><span class="label">Total falls</span><strong id="totalFalls">-</strong></div>
     <div class="metric"><span class="label">Active days</span><strong id="activeDays">-</strong></div>
+    <div class="metric"><span class="label">Longest streak</span><strong id="longestStreak">-</strong></div>
+    <div class="metric"><span class="label">Current streak</span><strong id="currentStreak">-</strong></div>
+    <div class="metric"><span class="label">Best day</span><strong id="bestDay">-</strong></div>
+    <div class="metric"><span class="label">Best month</span><strong id="bestMonth">-</strong></div>
+    <div class="metric"><span class="label">Best weekday</span><strong id="bestWeekday">-</strong></div>
     <div class="metric"><span class="label">Best hour</span><strong id="bestHour">-</strong></div>
+    <div class="metric"><span class="label">Avg / active day</span><strong id="averageActiveDay">-</strong></div>
   </div>
 
   <section>
@@ -286,22 +292,22 @@ function parseTsv(text) {
       row[key] = cols[index] || "";
     });
 
-    const date = new Date(row.timestamp);
+    const date = new Date(row.sampled_at);
 
     return {
-      timestamp: row.timestamp,
+      sampledAt: row.sampled_at,
       date,
       totalFrames: Number(row.total_frames),
       totalJumps: Number(row.total_jumps),
       totalFalls: Number(row.total_falls)
     };
   }).filter(row =>
-    row.timestamp &&
+    row.sampledAt &&
     !Number.isNaN(row.date.getTime()) &&
     Number.isFinite(row.totalFrames) &&
     Number.isFinite(row.totalJumps) &&
     Number.isFinite(row.totalFalls)
-  ).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  ).sort((a, b) => a.sampledAt.localeCompare(b.sampledAt));
 }
 
 function buildDeltas(rows) {
@@ -341,6 +347,12 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function dateKeyToDayNumber(key) {
+  const [year, month, day] = key.split("-").map(Number);
+
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+}
+
 function addToMap(map, key, frames, jumps, falls) {
   if (!map.has(key)) {
     map.set(key, { frames: 0, jumps: 0, falls: 0 });
@@ -350,6 +362,31 @@ function addToMap(map, key, frames, jumps, falls) {
   item.frames += frames;
   item.jumps += jumps;
   item.falls += falls;
+}
+
+function calculateStreaks(activeDates) {
+  const days = Array.from(activeDates)
+    .map(dateKeyToDayNumber)
+    .sort((a, b) => a - b);
+
+  if (days.length === 0) {
+    return { longest: 0, current: 0 };
+  }
+
+  let longest = 1;
+  let current = 1;
+
+  for (let i = 1; i < days.length; i++) {
+    if (days[i] === days[i - 1] + 1) {
+      current++;
+    } else if (days[i] !== days[i - 1]) {
+      current = 1;
+    }
+
+    longest = Math.max(longest, current);
+  }
+
+  return { longest, current };
 }
 
 function level(value, max) {
@@ -384,27 +421,38 @@ function renderYear(year) {
   const deltas = buildDeltas(samples).filter(row => row.year === year);
   const hourlyMap = new Map();
   const monthlyMap = new Map();
+  const dailyMap = new Map();
+  const weekdayMap = new Map();
   const activeDates = new Set();
 
   for (const row of deltas) {
     addToMap(hourlyMap, `${row.weekday}-${row.hour}`, row.frames, row.jumps, row.falls);
     addToMap(monthlyMap, row.month, row.frames, row.jumps, row.falls);
+    addToMap(dailyMap, row.localDate, row.frames, row.jumps, row.falls);
+    addToMap(weekdayMap, row.weekday, row.frames, row.jumps, row.falls);
 
     if (row.jumps > 0) {
       activeDates.add(row.localDate);
     }
   }
 
-  renderSummary(deltas, hourlyMap, activeDates);
+  renderSummary(deltas, hourlyMap, monthlyMap, dailyMap, weekdayMap, activeDates);
   renderHourly(hourlyMap);
   renderMonthly(monthlyMap);
 }
 
-function renderSummary(deltas, hourlyMap, activeDates) {
+function renderSummary(deltas, hourlyMap, monthlyMap, dailyMap, weekdayMap, activeDates) {
   const totalJumps = deltas.reduce((sum, row) => sum + row.jumps, 0);
   const totalFalls = deltas.reduce((sum, row) => sum + row.falls, 0);
+  const streaks = calculateStreaks(activeDates);
   let bestHour = "-";
   let bestHourJumps = 0;
+  let bestDay = "-";
+  let bestDayJumps = 0;
+  let bestMonth = "-";
+  let bestMonthJumps = 0;
+  let bestWeekday = "-";
+  let bestWeekdayJumps = 0;
 
   for (const [key, value] of hourlyMap.entries()) {
     if (value.jumps > bestHourJumps) {
@@ -414,10 +462,38 @@ function renderSummary(deltas, hourlyMap, activeDates) {
     }
   }
 
+  for (const [key, value] of dailyMap.entries()) {
+    if (value.jumps > bestDayJumps) {
+      bestDayJumps = value.jumps;
+      bestDay = `${key} / ${formatNumber(value.jumps)}`;
+    }
+  }
+
+  for (const [key, value] of monthlyMap.entries()) {
+    if (value.jumps > bestMonthJumps) {
+      bestMonthJumps = value.jumps;
+      bestMonth = `${months[Number(key) - 1]} / ${formatNumber(value.jumps)}`;
+    }
+  }
+
+  for (const [key, value] of weekdayMap.entries()) {
+    if (value.jumps > bestWeekdayJumps) {
+      bestWeekdayJumps = value.jumps;
+      bestWeekday = `${weekdays[Number(key)]} / ${formatNumber(value.jumps)}`;
+    }
+  }
+
   document.getElementById("totalJumps").textContent = formatNumber(totalJumps);
   document.getElementById("totalFalls").textContent = formatNumber(totalFalls);
   document.getElementById("activeDays").textContent = formatNumber(activeDates.size);
+  document.getElementById("longestStreak").textContent = `${formatNumber(streaks.longest)} days`;
+  document.getElementById("currentStreak").textContent = `${formatNumber(streaks.current)} days`;
+  document.getElementById("bestDay").textContent = bestDay;
+  document.getElementById("bestMonth").textContent = bestMonth;
+  document.getElementById("bestWeekday").textContent = bestWeekday;
   document.getElementById("bestHour").textContent = bestHour;
+  document.getElementById("averageActiveDay").textContent =
+    activeDates.size > 0 ? formatNumber(totalJumps / activeDates.size) : "-";
 }
 
 function renderHourly(hourlyMap) {

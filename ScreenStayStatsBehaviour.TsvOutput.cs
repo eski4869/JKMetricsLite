@@ -1,69 +1,40 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Text;
-using JumpKing.MiscSystems.Achievements;
-using JumpKing.MiscSystems.LocationText;
 
 namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
-        private void WriteAreaBarGraphTsv()
+        private void WriteAreaMetricsTsv()
         {
-            Dictionary<string, string> areaIndexMap = BuildAreaIndexMap();
-
             var sb = new StringBuilder();
-            sb.AppendLine("area_index\tarea_name\tfirst_reach_frames\tfirst_reach\tstay_frames\tstay_time\tis_current\tfirst_reach_speedrun\tstay_time_speedrun");
+            sb.AppendLine(
+                "area_name\tsplit_time_ms\tduration_ms\tis_current\tis_excluded"
+            );
 
-            foreach (string area in GetAreaFramesInAppearedOrder())
+            foreach (string area in GetRawAreaFramesInAppearedOrder())
             {
-                if (area == "Unknown")
-                {
-                    continue;
-                }
-
                 int frames = _areaFrames[area];
+                string splitTimeMilliseconds = "";
 
-                string firstReachedTime = "-";
-                string firstReachedSpeedrunTime = "-";
-                string firstReachedFrames = "";
-
-                if (_areaFirstReachedFrames.ContainsKey(area))
+                if (_areaFirstReachedMilliseconds.ContainsKey(area))
                 {
-                    int firstFrames = _areaFirstReachedFrames[area];
-                    long firstMilliseconds = _areaFirstReachedMilliseconds.ContainsKey(area)
-                        ? _areaFirstReachedMilliseconds[area]
-                        : FramesToMilliseconds(firstFrames);
-
-                    firstReachedFrames = firstFrames.ToString();
-                    firstReachedTime = FormatMillisecondsAsTime(firstMilliseconds);
-                    firstReachedSpeedrunTime =
-                        FormatMillisecondsAsSpeedrunTime(firstMilliseconds);
-                }
-
-                string areaIndex = "Unknown";
-
-                if (areaIndexMap.ContainsKey(area))
-                {
-                    areaIndex = areaIndexMap[area];
+                    splitTimeMilliseconds =
+                        _areaFirstReachedMilliseconds[area].ToString();
                 }
 
                 sb.AppendLine(
-                    EscapeTsv(areaIndex) + "\t" +
                     EscapeTsv(area) + "\t" +
-                    firstReachedFrames + "\t" +
-                    EscapeTsv(firstReachedTime) + "\t" +
-                    frames + "\t" +
-                    EscapeTsv(FormatFramesAsTime(frames)) + "\t" +
+                    splitTimeMilliseconds + "\t" +
+                    FramesToMilliseconds(frames) + "\t" +
                     (area == _lastArea ? "1" : "0") + "\t" +
-                    EscapeTsv(firstReachedSpeedrunTime) + "\t" +
-                    EscapeTsv(FormatFramesAsSpeedrunTime(frames))
+                    (_excludedAreas.Contains(area) ? "1" : "0")
                 );
             }
 
-            File.WriteAllText(_areaBarGraphPath, sb.ToString(), Encoding.UTF8);
+            File.WriteAllText(_areaMetricsPath, sb.ToString(), Encoding.UTF8);
         }
 
         private Dictionary<string, string> BuildAreaIndexMap()
@@ -109,100 +80,110 @@ namespace JKMetricsLite
             return map;
         }
 
-        private void WriteScreenBarGraphTsv()
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("screen\tstay_frames\tstay_time\tarea\tis_current");
-
-            for (int screen = MinScreen; screen <= MaxScreen; screen++)
-            {
-                string area = GetAreaNameForScreen(screen);
-
-                if (!IsAreaIncludedForMetrics(area))
-                {
-                    continue;
-                }
-
-                int frames = _screenFrames[screen];
-
-                sb.AppendLine(
-                    screen + "\t" +
-                    frames + "\t" +
-                    EscapeTsv(FormatFramesAsTime(frames)) + "\t" +
-                    EscapeTsv(area) + "\t" +
-                    (screen == _lastScreen ? "1" : "0")
-                );
-            }
-
-            File.WriteAllText(_screenBarGraphPath, sb.ToString(), Encoding.UTF8);
-        }
-
-        private void WriteProgressStatusTsv()
+        private void WriteCurrentProgressTsv()
         {
             try
             {
-                var sb = new StringBuilder();
-                sb.AppendLine("key\tvalue");
-                sb.AppendLine("pb\t" + EscapeTsv(GetPbText()));
-                sb.AppendLine("current\t" + EscapeTsv(GetCurrentText()));
-                sb.AppendLine("pb_area\t" + EscapeTsv(_pbArea));
-                sb.AppendLine("pb_area_index\t" + _pbAreaIndex);
-                sb.AppendLine("pb_screen_in_area\t" + _pbScreenInArea);
-                sb.AppendLine("pb_screen\t" + _pbScreen);
-                sb.AppendLine("current_screen\t" + _lastScreen);
+                int currentAreaIndex;
+                int currentScreenInArea;
+                GetCurrentProgress(out currentAreaIndex, out currentScreenInArea);
 
-                File.WriteAllText(_progressStatusPath, sb.ToString(), Encoding.UTF8);
+                var sb = new StringBuilder();
+                sb.AppendLine(
+                    "attempt\telapsed_ms\tcurrent_screen\t" +
+                    "current_area_index\tcurrent_screen_in_area\t" +
+                    "pb_area_index\tpb_screen_in_area"
+                );
+                sb.AppendLine(
+                    (_attempt.HasValue ? _attempt.Value.ToString() : "UNKNOWN") + "\t" +
+                    FramesToMilliseconds(_totalFrames) + "\t" +
+                    Math.Max(0, _lastScreen) + "\t" +
+                    Math.Max(0, currentAreaIndex) + "\t" +
+                    Math.Max(0, currentScreenInArea) + "\t" +
+                    Math.Max(0, _pbAreaIndex) + "\t" +
+                    Math.Max(0, _pbScreenInArea)
+                );
+
+                File.WriteAllText(_currentProgressPath, sb.ToString(), Encoding.UTF8);
             }
             catch (Exception ex)
             {
-                LogError("Write progress status TSV", ex);
+                LogError("Write current progress TSV", ex);
             }
         }
 
-        private string GetPbText()
+        private void WriteScreenOrderTsv(bool force)
         {
-            if (_pbAreaIndex <= 0 || _pbScreenInArea <= 0)
+            if (!force && !_screenOrderDirty)
             {
-                return "PB: -";
+                return;
             }
 
-            return "PB: " + _pbAreaIndex + "-" + _pbScreenInArea;
-        }
-
-        private string GetCurrentText()
-        {
-            return "Current: " + FormatCurrentProgressScreen(_lastScreen);
-        }
-
-        private string FormatCurrentProgressScreen(int screen)
-        {
-            if (screen < MinScreen || screen > MaxScreen)
+            try
             {
-                return "-";
+                var sb = new StringBuilder();
+                sb.AppendLine("area_name\tscreen");
+
+                foreach (string area in GetRawAreaFramesInAppearedOrder())
+                {
+                    if (!_areaScreenAppearedOrder.ContainsKey(area))
+                    {
+                        continue;
+                    }
+
+                    List<int> screens = _areaScreenAppearedOrder[area];
+
+                    for (int i = 0; i < screens.Count; i++)
+                    {
+                        sb.AppendLine(EscapeTsv(area) + "\t" + screens[i]);
+                    }
+                }
+
+                File.WriteAllText(_screenOrderPath, sb.ToString(), Encoding.UTF8);
+                _screenOrderDirty = false;
+            }
+            catch (Exception ex)
+            {
+                LogError("Write screen order TSV", ex);
+            }
+        }
+
+        private void GetCurrentProgress(out int areaIndex, out int screenInArea)
+        {
+            areaIndex = 0;
+            screenInArea = 0;
+
+            if (_lastScreen < MinScreen || _lastScreen > MaxScreen)
+            {
+                return;
             }
 
-            string areaName = GetAreaNameForScreen(screen);
+            string areaName = GetAreaNameForScreen(_lastScreen);
 
             if (!IsAreaIncludedForMetrics(areaName))
             {
-                return "Unknown";
+                return;
             }
 
             Dictionary<string, string> areaIndexMap = BuildAreaIndexMap();
 
             if (!areaIndexMap.ContainsKey(areaName))
             {
-                return "Unknown";
+                return;
             }
 
-            int screenInArea = GetScreenInAreaOrder(areaName, screen);
-
-            if (screenInArea <= 0)
+            if (!int.TryParse(areaIndexMap[areaName], out areaIndex))
             {
-                return "Unknown";
+                areaIndex = 0;
+                return;
             }
 
-            return areaIndexMap[areaName] + "-" + screenInArea;
+            screenInArea = GetScreenInAreaOrder(areaName, _lastScreen);
+
+            if (screenInArea < 0)
+            {
+                screenInArea = 0;
+            }
         }
 
         private void AppendScreenTimelineTsv()
@@ -220,15 +201,12 @@ namespace JKMetricsLite
 
                 if (!exists)
                 {
-                    sb.AppendLine("elapsed_frames\telapsed_time\tscreen\tarea\tattempt");
+                    sb.AppendLine("elapsed_ms\tscreen");
                 }
 
                 sb.AppendLine(
-                    _totalFrames + "\t" +
-                    EscapeTsv(FormatFramesAsTimeWithMs(_totalFrames)) + "\t" +
-                    _lastScreen + "\t" +
-                    EscapeTsv(GetDisplayAreaName(_lastArea)) + "\t" +
-                    (_stateAttempt.HasValue ? _stateAttempt.Value.ToString() : "UNKNOWN")
+                    FramesToMilliseconds(_totalFrames) + "\t" +
+                    _lastScreen
                 );
 
                 File.AppendAllText(_screenTimelinePath, sb.ToString(), Encoding.UTF8);
@@ -238,43 +216,6 @@ namespace JKMetricsLite
             {
                 LogError("Append screen timeline TSV", ex);
             }
-        }
-
-        private List<string> GetAreaFramesInAppearedOrder()
-        {
-            var list = new List<string>();
-
-            for (int i = 0; i < _areaAppearedOrder.Count; i++)
-            {
-                string area = _areaAppearedOrder[i];
-
-                if (!IsAreaIncludedForMetrics(area))
-                {
-                    continue;
-                }
-
-                if (_areaFrames.ContainsKey(area))
-                {
-                    list.Add(area);
-                }
-            }
-
-            foreach (KeyValuePair<string, int> pair in _areaFrames)
-            {
-                string area = pair.Key;
-
-                if (!IsAreaIncludedForMetrics(area))
-                {
-                    continue;
-                }
-
-                if (!list.Contains(area))
-                {
-                    list.Add(area);
-                }
-            }
-
-            return list;
         }
 
         private List<string> GetRawAreaFramesInAppearedOrder()

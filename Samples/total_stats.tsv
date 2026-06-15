@@ -1,4 +1,4 @@
-timestamp	total_frames	total_jumps	total_falls
+sampled_at	total_frames	total_jumps	total_falls
 2026-01-01T00:00:00+09:00	0	0	0
 2026-01-01T19:06:00+09:00	3600	25	0
 2026-01-01T19:07:00+09:00	7200	42	0

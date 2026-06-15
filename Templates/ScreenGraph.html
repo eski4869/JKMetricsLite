@@ -45,14 +45,14 @@
 <body>
 <div id="panel">
   <div id="pb">PB: -</div>
-  <div id="title">Screen Timeline</div>
+  <div id="title">Screen Graph</div>
   <canvas id="chart" width="900" height="420"></canvas>
   <div id="note">Recent screen progress</div>
 </div>
 
 <script>
-const timelineFilePath = "screen_timeline.tsv";
-const statusFilePath = "progress_status.tsv";
+const timelineFilePath = "../raw_data/screen_timeline.tsv";
+const progressFilePath = "../raw_data/current_progress.tsv";
 
 const maxPoints = 5000;
 const absoluteMinScreen = 1;
@@ -60,22 +60,30 @@ const absoluteMaxScreen = 169;
 
 async function updateStatus() {
   try {
-    const res = await fetch(statusFilePath + "?t=" + Date.now());
+    const res = await fetch(progressFilePath + "?t=" + Date.now());
     const text = await res.text();
     const lines = text.trim().split(/\r?\n/);
 
-    for (const line of lines.slice(1)) {
-      const cols = line.split("\t");
-      const key = cols[0] || "";
-      const value = cols[1] || "";
-
-      if (key === "pb") {
-        document.getElementById("pb").textContent = value || "PB: -";
-        return;
-      }
+    if (lines.length <= 1) {
+      document.getElementById("pb").textContent = "PB: -";
+      return;
     }
 
-    document.getElementById("pb").textContent = "PB: -";
+    const header = lines[0].split("\t");
+    const cols = lines[1].split("\t");
+    const row = {};
+
+    header.forEach((key, index) => {
+      row[key] = cols[index] || "";
+    });
+
+    const areaIndex = Number(row.pb_area_index);
+    const screenInArea = Number(row.pb_screen_in_area);
+    const pb = areaIndex > 0 && screenInArea > 0
+      ? areaIndex + "-" + screenInArea
+      : "-";
+
+    document.getElementById("pb").textContent = "PB: " + pb;
   } catch (e) {
     document.getElementById("pb").textContent = "PB: -";
   }
@@ -91,23 +99,40 @@ async function loadTimeline() {
     return [];
   }
 
+  const header = lines[0].split("\t");
   const recentLines = lines.slice(Math.max(1, lines.length - maxPoints));
 
   return recentLines.map(line => {
     const cols = line.split("\t");
+    const row = {};
+
+    header.forEach((key, index) => {
+      row[key] = cols[index] || "";
+    });
 
     return {
-      elapsedFrames: Number(cols[0] || 0),
-      elapsedTime: cols[1] || "",
-      screen: Number(cols[2] || 0),
-      area: cols[3] || ""
+      elapsedMs: Number(row.elapsed_ms),
+      screen: Number(row.screen)
     };
   }).filter(p =>
-    Number.isFinite(p.elapsedFrames) &&
+    Number.isFinite(p.elapsedMs) &&
     Number.isFinite(p.screen) &&
     p.screen >= absoluteMinScreen &&
     p.screen <= absoluteMaxScreen
   );
+}
+
+function formatElapsedTime(milliseconds) {
+  const totalSeconds = Math.floor(Math.max(0, milliseconds) / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(totalSeconds / 60) % 60;
+  const seconds = totalSeconds % 60;
+  const ms = Math.floor(Math.max(0, milliseconds) % 1000);
+
+  return String(hours).padStart(2, " ") + "h " +
+    String(minutes).padStart(2, " ") + "m " +
+    String(seconds).padStart(2, " ") + "s " +
+    String(ms).padStart(3, "0") + "ms";
 }
 
 function drawChart(points) {
@@ -163,8 +188,8 @@ function drawChart(points) {
     }
   }
 
-  const minX = visible[0].elapsedFrames;
-  const maxX = visible[visible.length - 1].elapsedFrames;
+  const minX = visible[0].elapsedMs;
+  const maxX = visible[visible.length - 1].elapsedMs;
 
   if (maxX <= minX || yMax <= yMin) {
     return;
@@ -198,7 +223,7 @@ function drawChart(points) {
   for (let i = 0; i < visible.length; i++) {
     const p = visible[i];
 
-    const x = paddingLeft + ((p.elapsedFrames - minX) / (maxX - minX)) * plotWidth;
+    const x = paddingLeft + ((p.elapsedMs - minX) / (maxX - minX)) * plotWidth;
     const y = paddingTop + plotHeight - ((p.screen - yMin) / (yMax - yMin)) * plotHeight;
 
     if (i === 0) {
@@ -211,7 +236,7 @@ function drawChart(points) {
   ctx.stroke();
 
   const last = visible[visible.length - 1];
-  const lastX = paddingLeft + ((last.elapsedFrames - minX) / (maxX - minX)) * plotWidth;
+  const lastX = paddingLeft + ((last.elapsedMs - minX) / (maxX - minX)) * plotWidth;
   const lastY = paddingTop + plotHeight - ((last.screen - yMin) / (yMax - yMin)) * plotHeight;
 
   ctx.fillStyle = "white";
@@ -221,8 +246,8 @@ function drawChart(points) {
 
   ctx.font = "18px Cascadia Mono, Consolas, monospace";
   ctx.fillStyle = "white";
-  ctx.fillText("Screen " + last.screen + " / " + last.area, paddingLeft, height - 8);
-  ctx.fillText(last.elapsedTime, width - 260, height - 8);
+  ctx.fillText("Screen " + last.screen, paddingLeft, height - 8);
+  ctx.fillText(formatElapsedTime(last.elapsedMs), width - 260, height - 8);
 }
 
 async function update() {

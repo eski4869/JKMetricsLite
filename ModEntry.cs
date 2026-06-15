@@ -298,11 +298,9 @@ namespace JKMetricsLite
     {
         private const int MinScreen = 1;
         private const int MaxScreen = 169;
-        private const int ScreenCount = 170;
-
         private const int OutputIntervalFrames = 60;
-        private const int StateSaveIntervalFrames = 3600;
-        private const int ActivitySampleIntervalFrames = 3600;
+        private const int ScreenOrderSaveIntervalFrames = 3600;
+        private const int TotalStatsIntervalFrames = 3600;
         private const string OutputFolderName = "JKMetricsLite";
         private const string ConfigFileName = "JKMetricsLite.env";
         private const string OutputDirKey = "OUTPUT_DIR";
@@ -310,10 +308,7 @@ namespace JKMetricsLite
         private static ScreenStayStatsBehaviour _instance;
         private static bool _processExitRegistered = false;
 
-        private readonly int[] _screenFrames = new int[ScreenCount];
-
         private readonly Dictionary<string, int> _areaFrames = new Dictionary<string, int>();
-        private readonly Dictionary<string, int> _areaFirstReachedFrames = new Dictionary<string, int>();
         private readonly Dictionary<string, long> _areaFirstReachedMilliseconds =
             new Dictionary<string, long>();
         private readonly List<string> _areaAppearedOrder = new List<string>();
@@ -324,22 +319,22 @@ namespace JKMetricsLite
             new Dictionary<string, List<int>>();
 
         private readonly string _outputDir;
-        private readonly string _statePath;
-        private readonly string _areaBarGraphPath;
-        private readonly string _screenBarGraphPath;
+        private readonly string _areaMetricsPath;
         private readonly string _screenTimelinePath;
-        private readonly string _progressStatusPath;
-        private readonly string _activitySamplesPath;
+        private readonly string _screenOrderPath;
+        private readonly string _currentProgressPath;
+        private readonly string _totalStatsPath;
 
         private Location[] _locations = new Location[0];
 
         private int _totalFrames = 0;
         private int _outputCounter = 0;
-        private int _stateSaveCounter = 0;
-        private int _activitySampleCounter = 0;
+        private int _screenOrderSaveCounter = 0;
+        private int _totalStatsCounter = 0;
         private int _lastScreen = -1;
         private int _lastTimelineAppendFrames = -1;
         private string _lastArea = "Unknown";
+        private bool _screenOrderDirty = false;
 
         // PB is based on first-reached area order + first-reached screen order inside that area.
         private string _pbArea = "";
@@ -347,17 +342,16 @@ namespace JKMetricsLite
         private int _pbScreenInArea = -1;
         private int _pbScreen = -1;
 
-        private int? _stateAttempt = null;
+        private int? _attempt = null;
 
         private sealed class LevelLoadPreparation
         {
             public string OutputDir;
-            public string StatePath;
-            public string AreaBarGraphPath;
-            public string ScreenBarGraphPath;
+            public string AreaMetricsPath;
             public string ScreenTimelinePath;
-            public string ProgressStatusPath;
-            public string ActivitySamplesPath;
+            public string ScreenOrderPath;
+            public string CurrentProgressPath;
+            public string TotalStatsPath;
         }
 
         private static LevelLoadPreparation _levelLoadPreparation;
@@ -371,25 +365,31 @@ namespace JKMetricsLite
             WriteDefaultConfigFileIfMissing(assemblyDir);
 
             string outputDir = ResolveOutputDir(assemblyDir);
+            string rawDataDir = Path.Combine(outputDir, "raw_data");
+            string obsDir = Path.Combine(outputDir, "obs");
+            string localDir = Path.Combine(outputDir, "local");
+
             Directory.CreateDirectory(outputDir);
+            Directory.CreateDirectory(rawDataDir);
+            Directory.CreateDirectory(obsDir);
+            Directory.CreateDirectory(localDir);
             SetLogOutputDir(outputDir);
 
             var preparation = new LevelLoadPreparation
             {
                 OutputDir = outputDir,
-                StatePath = Path.Combine(outputDir, "metrics_state.tsv"),
-                AreaBarGraphPath = Path.Combine(outputDir, "area_bar_graph.tsv"),
-                ScreenBarGraphPath = Path.Combine(outputDir, "screen_bar_graph.tsv"),
-                ScreenTimelinePath = Path.Combine(outputDir, "screen_timeline.tsv"),
-                ProgressStatusPath = Path.Combine(outputDir, "progress_status.tsv"),
-                ActivitySamplesPath = Path.Combine(outputDir, "jump_activity.tsv")
+                AreaMetricsPath = Path.Combine(rawDataDir, "area_metrics.tsv"),
+                ScreenTimelinePath = Path.Combine(rawDataDir, "screen_timeline.tsv"),
+                ScreenOrderPath = Path.Combine(rawDataDir, "screen_order.tsv"),
+                CurrentProgressPath = Path.Combine(rawDataDir, "current_progress.tsv"),
+                TotalStatsPath = Path.Combine(rawDataDir, "total_stats.tsv")
             };
 
-            WriteOverlayHtmlIfMissing(outputDir, "area_name.html", LoadOverlayTemplate(AreaNameTemplateName));
-            WriteOverlayHtmlIfMissing(outputDir, "area_no.html", LoadOverlayTemplate(AreaNoTemplateName));
-            WriteOverlayHtmlIfMissing(outputDir, "area_name_speedrun.html", LoadOverlayTemplate(AreaNameSpeedrunTemplateName));
-            WriteOverlayHtmlIfMissing(outputDir, "screen_timeline.html", LoadOverlayTemplate(ScreenTimelineTemplateName));
-            WriteOverlayHtmlIfMissing(outputDir, "jump_activity.html", LoadOverlayTemplate(JumpActivityTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "area_name.html", LoadOverlayTemplate(AreaNameTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "area_no.html", LoadOverlayTemplate(AreaNoTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "area_name_speedrun.html", LoadOverlayTemplate(AreaNameSpeedrunTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "screen_graph.html", LoadOverlayTemplate(ScreenGraphTemplateName));
+            WriteOverlayHtmlIfMissing(localDir, "recap.html", LoadOverlayTemplate(RecapTemplateName));
 
             _levelLoadPreparation = preparation;
         }
@@ -418,32 +418,32 @@ namespace JKMetricsLite
             _outputDir = preparation.OutputDir;
             SetLogOutputDir(_outputDir);
 
-            _statePath = preparation.StatePath;
-            _areaBarGraphPath = preparation.AreaBarGraphPath;
-            _screenBarGraphPath = preparation.ScreenBarGraphPath;
+            _areaMetricsPath = preparation.AreaMetricsPath;
             _screenTimelinePath = preparation.ScreenTimelinePath;
-            _progressStatusPath = preparation.ProgressStatusPath;
-            _activitySamplesPath = preparation.ActivitySamplesPath;
+            _screenOrderPath = preparation.ScreenOrderPath;
+            _currentProgressPath = preparation.CurrentProgressPath;
+            _totalStatsPath = preparation.TotalStatsPath;
             _locations = LoadLocations();
 
-            AppendActivitySampleTsv();
+            AppendTotalStatsTsv();
 
             int? currentAttempt = TryGetCurrentAttempt();
+            bool loaded = LoadRunDataIfSameAttempt(currentAttempt);
 
-            if (LoadStateIfSameAttempt(currentAttempt))
+            if (loaded)
             {
                 ReconcileLoadedStateWithGameTime();
-                RepairPbIfNeeded();
+                RecalculatePb();
             }
             else
             {
                 ResetStats();
-                _stateAttempt = currentAttempt;
+                _attempt = currentAttempt;
                 ResetTimelineFile();
             }
 
             WriteOutputFiles(false);
-            SaveState();
+            WriteScreenOrderTsv(!loaded);
         }
 
         private static void WriteDefaultConfigFileIfMissing(string assemblyDir)
@@ -576,11 +576,11 @@ namespace JKMetricsLite
             }
 
             _instance.WriteOutputFiles(appendTimeline);
-            _instance.SaveState();
+            _instance.WriteScreenOrderTsv(false);
 
             if (appendActivity)
             {
-                _instance.AppendActivitySampleTsv();
+                _instance.AppendTotalStatsTsv();
             }
         }
 
@@ -595,7 +595,6 @@ namespace JKMetricsLite
 
             if (screen >= MinScreen && screen <= MaxScreen)
             {
-                _screenFrames[screen]++;
                 _lastScreen = screen;
 
                 string areaName = GetAreaNameForScreen(screen);
@@ -609,7 +608,7 @@ namespace JKMetricsLite
                         _areaFrames[areaName] = 0;
                     }
 
-                    if (!_areaFirstReachedFrames.ContainsKey(areaName))
+                    if (!_areaFirstReachedMilliseconds.ContainsKey(areaName))
                     {
                         RecordAreaFirstReach(areaName);
                     }
@@ -635,20 +634,20 @@ namespace JKMetricsLite
                 WriteOutputFiles(true);
             }
 
-            _stateSaveCounter++;
+            _screenOrderSaveCounter++;
 
-            if (_stateSaveCounter >= StateSaveIntervalFrames)
+            if (_screenOrderSaveCounter >= ScreenOrderSaveIntervalFrames)
             {
-                _stateSaveCounter = 0;
-                SaveState();
+                _screenOrderSaveCounter = 0;
+                WriteScreenOrderTsv(false);
             }
 
-            _activitySampleCounter++;
+            _totalStatsCounter++;
 
-            if (_activitySampleCounter >= ActivitySampleIntervalFrames)
+            if (_totalStatsCounter >= TotalStatsIntervalFrames)
             {
-                _activitySampleCounter = 0;
-                AppendActivitySampleTsv();
+                _totalStatsCounter = 0;
+                AppendTotalStatsTsv();
             }
 
             return true;
@@ -656,9 +655,8 @@ namespace JKMetricsLite
 
         private void WriteOutputFiles(bool appendTimeline)
         {
-            WriteAreaBarGraphTsv();
-            WriteScreenBarGraphTsv();
-            WriteProgressStatusTsv();
+            WriteAreaMetricsTsv();
+            WriteCurrentProgressTsv();
 
             if (appendTimeline)
             {

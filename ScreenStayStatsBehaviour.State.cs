@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Text;
-using JumpKing.MiscSystems.Achievements;
-using JumpKing.MiscSystems.LocationText;
 
 namespace JKMetricsLite
 {
@@ -12,13 +9,7 @@ namespace JKMetricsLite
     {
         private void ResetStats()
         {
-            for (int i = 0; i < _screenFrames.Length; i++)
-            {
-                _screenFrames[i] = 0;
-            }
-
             _areaFrames.Clear();
-            _areaFirstReachedFrames.Clear();
             _areaFirstReachedMilliseconds.Clear();
             _areaAppearedOrder.Clear();
             _areaScreenAppearedOrder.Clear();
@@ -26,13 +17,17 @@ namespace JKMetricsLite
 
             _totalFrames = 0;
             _outputCounter = 0;
+            _screenOrderSaveCounter = 0;
             _lastScreen = -1;
+            _lastTimelineAppendFrames = -1;
             _lastArea = "Unknown";
+            _screenOrderDirty = false;
 
             _pbArea = "";
             _pbAreaIndex = -1;
             _pbScreenInArea = -1;
             _pbScreen = -1;
+            _attempt = null;
         }
 
         private void ResetTimelineFile()
@@ -66,17 +61,14 @@ namespace JKMetricsLite
                 return;
             }
 
-            int gameFrames = (int)Math.Round(currentRunTime.Value.TotalSeconds / secondsPerFrame);
+            int gameFrames = (int)Math.Round(
+                currentRunTime.Value.TotalSeconds / secondsPerFrame
+            );
             int delta = gameFrames - _totalFrames;
 
             if (delta <= 0)
             {
                 return;
-            }
-
-            if (_lastScreen >= MinScreen && _lastScreen <= MaxScreen)
-            {
-                _screenFrames[_lastScreen] += delta;
             }
 
             if (!string.IsNullOrEmpty(_lastArea) && _lastArea != "Unknown")
@@ -92,16 +84,20 @@ namespace JKMetricsLite
             _totalFrames = gameFrames;
         }
 
-        private bool LoadStateIfSameAttempt(int? currentAttempt)
+        private bool LoadRunDataIfSameAttempt(int? currentAttempt)
         {
-            if (!File.Exists(_statePath))
+            if (!File.Exists(_areaMetricsPath) ||
+                !File.Exists(_screenOrderPath) ||
+                !File.Exists(_currentProgressPath))
             {
                 return false;
             }
 
             int? savedAttempt = ReadSavedAttempt();
 
-            if (currentAttempt.HasValue && savedAttempt.HasValue && currentAttempt.Value != savedAttempt.Value)
+            if (currentAttempt.HasValue &&
+                savedAttempt.HasValue &&
+                currentAttempt.Value != savedAttempt.Value)
             {
                 return false;
             }
@@ -109,176 +105,87 @@ namespace JKMetricsLite
             try
             {
                 ResetStats();
+                LoadAreaMetrics();
+                LoadScreenOrder();
+                LoadCurrentProgress();
 
-                string[] lines = File.ReadAllLines(_statePath, Encoding.UTF8);
-
-                foreach (string line in lines)
-                {
-                    if (string.IsNullOrWhiteSpace(line))
-                    {
-                        continue;
-                    }
-
-                    string[] parts = line.Split('\t');
-
-                    if (parts.Length == 0)
-                    {
-                        continue;
-                    }
-
-                    if (parts[0] == "ATTEMPT" && parts.Length >= 2)
-                    {
-                        int parsedAttempt;
-                        if (int.TryParse(parts[1], out parsedAttempt))
-                        {
-                            _stateAttempt = parsedAttempt;
-                        }
-                    }
-                    else if (parts[0] == "TOTAL" && parts.Length >= 2)
-                    {
-                        int.TryParse(parts[1], out _totalFrames);
-                    }
-                    else if (parts[0] == "LAST" && parts.Length >= 3)
-                    {
-                        int.TryParse(parts[1], out _lastScreen);
-                        _lastArea = DecodeText(parts[2]);
-                    }
-                    else if (parts[0] == "PB" && parts.Length >= 5)
-                    {
-                        _pbArea = DecodeText(parts[1]);
-                        int.TryParse(parts[2], out _pbAreaIndex);
-                        int.TryParse(parts[3], out _pbScreenInArea);
-                        int.TryParse(parts[4], out _pbScreen);
-                    }
-                    else if (parts[0] == "SCREEN" && parts.Length >= 3)
-                    {
-                        int screen;
-                        int frames;
-
-                        if (int.TryParse(parts[1], out screen) &&
-                            int.TryParse(parts[2], out frames) &&
-                            screen >= MinScreen &&
-                            screen <= MaxScreen)
-                        {
-                            _screenFrames[screen] = frames;
-                        }
-                    }
-                    else if (parts[0] == "AREA" && parts.Length >= 4)
-                    {
-                        string area = DecodeText(parts[1]);
-
-                        if (area == "Unknown")
-                        {
-                            continue;
-                        }
-
-                        int frames;
-                        int firstReachedFrames;
-
-                        if (int.TryParse(parts[2], out frames) &&
-                            int.TryParse(parts[3], out firstReachedFrames))
-                        {
-                            _areaFrames[area] = frames;
-                            _areaFirstReachedFrames[area] = firstReachedFrames;
-
-                            long firstReachedMilliseconds;
-
-                            if (parts.Length >= 5 &&
-                                long.TryParse(parts[4], out firstReachedMilliseconds))
-                            {
-                                _areaFirstReachedMilliseconds[area] = firstReachedMilliseconds;
-                            }
-                            else
-                            {
-                                _areaFirstReachedMilliseconds[area] =
-                                    FramesToMilliseconds(firstReachedFrames);
-                            }
-                        }
-                    }
-                    else if (parts[0] == "ORDER" && parts.Length >= 2)
-                    {
-                        string area = DecodeText(parts[1]);
-
-                        if (area == "Unknown")
-                        {
-                            continue;
-                        }
-
-                        if (!_areaAppearedOrder.Contains(area))
-                        {
-                            _areaAppearedOrder.Add(area);
-                        }
-                    }
-                    else if (parts[0] == "AREA_SCREEN_ORDER" && parts.Length >= 3)
-                    {
-                        string area = DecodeText(parts[1]);
-
-                        if (area == "Unknown")
-                        {
-                            continue;
-                        }
-
-                        int screen;
-
-                        if (int.TryParse(parts[2], out screen) &&
-                            screen >= MinScreen &&
-                            screen <= MaxScreen)
-                        {
-                            RegisterAreaScreenIfNeeded(area, screen);
-                        }
-                    }
-                    else if (parts[0] == "EXCLUDED_AREA" && parts.Length >= 2)
-                    {
-                        string area = DecodeText(parts[1]);
-
-                        if (area != "Unknown")
-                        {
-                            _excludedAreas.Add(area);
-                        }
-                    }
-                }
-
-                // For old state files without AREA_SCREEN_ORDER, rebuild a fallback order.
-                RebuildAreaScreenOrderFallbackIfNeeded();
-
-                if (currentAttempt.HasValue)
-                {
-                    _stateAttempt = currentAttempt;
-                }
-                else if (savedAttempt.HasValue)
-                {
-                    _stateAttempt = savedAttempt;
-                }
-
+                _attempt = currentAttempt.HasValue
+                    ? currentAttempt
+                    : savedAttempt;
+                _screenOrderDirty = false;
                 return true;
             }
             catch (Exception ex)
             {
-                LogError("Load state", ex);
+                LogError("Load run data", ex);
                 return false;
             }
         }
 
-        private void RebuildAreaScreenOrderFallbackIfNeeded()
+        private void LoadAreaMetrics()
         {
-            foreach (string area in GetRawAreaFramesInAppearedOrder())
-            {
-                if (!_areaScreenAppearedOrder.ContainsKey(area))
-                {
-                    _areaScreenAppearedOrder[area] = new List<int>();
-                }
-            }
+            List<Dictionary<string, string>> rows = ReadTsvRows(_areaMetricsPath);
 
-            for (int screen = MinScreen; screen <= MaxScreen; screen++)
+            for (int i = 0; i < rows.Count; i++)
             {
-                if (_screenFrames[screen] <= 0)
+                Dictionary<string, string> row = rows[i];
+                string area = FormatAreaName(GetTsvValue(row, "area_name"));
+
+                if (area == "Unknown" || _areaFrames.ContainsKey(area))
                 {
                     continue;
                 }
 
-                string area = GetAreaNameForScreen(screen);
+                long durationMilliseconds;
 
-                if (area == "Unknown")
+                if (!long.TryParse(
+                    GetTsvValue(row, "duration_ms"),
+                    out durationMilliseconds
+                ))
+                {
+                    durationMilliseconds = 0;
+                }
+
+                _areaFrames[area] = MillisecondsToFrames(durationMilliseconds);
+                _areaAppearedOrder.Add(area);
+
+                long splitTimeMilliseconds;
+
+                if (long.TryParse(
+                    GetTsvValue(row, "split_time_ms"),
+                    out splitTimeMilliseconds
+                ))
+                {
+                    _areaFirstReachedMilliseconds[area] =
+                        Math.Max(0, splitTimeMilliseconds);
+                }
+
+                if (GetTsvValue(row, "is_excluded") == "1")
+                {
+                    _excludedAreas.Add(area);
+                }
+
+                if (GetTsvValue(row, "is_current") == "1")
+                {
+                    _lastArea = area;
+                }
+            }
+        }
+
+        private void LoadScreenOrder()
+        {
+            List<Dictionary<string, string>> rows = ReadTsvRows(_screenOrderPath);
+
+            for (int i = 0; i < rows.Count; i++)
+            {
+                Dictionary<string, string> row = rows[i];
+                string area = FormatAreaName(GetTsvValue(row, "area_name"));
+                int screen;
+
+                if (!_areaFrames.ContainsKey(area) ||
+                    !int.TryParse(GetTsvValue(row, "screen"), out screen) ||
+                    screen < MinScreen ||
+                    screen > MaxScreen)
                 {
                     continue;
                 }
@@ -287,14 +194,45 @@ namespace JKMetricsLite
             }
         }
 
-        private void RepairPbIfNeeded()
+        private void LoadCurrentProgress()
         {
-            if (IsValidPb())
+            List<Dictionary<string, string>> rows = ReadTsvRows(_currentProgressPath);
+
+            if (rows.Count == 0)
             {
                 return;
             }
 
-            RecalculatePb();
+            Dictionary<string, string> row = rows[0];
+            int savedAttempt;
+
+            if (int.TryParse(GetTsvValue(row, "attempt"), out savedAttempt))
+            {
+                _attempt = savedAttempt;
+            }
+
+            long elapsedMilliseconds;
+
+            if (long.TryParse(
+                GetTsvValue(row, "elapsed_ms"),
+                out elapsedMilliseconds
+            ))
+            {
+                _totalFrames = MillisecondsToFrames(elapsedMilliseconds);
+            }
+
+            int currentScreen;
+
+            if (int.TryParse(
+                GetTsvValue(row, "current_screen"),
+                out currentScreen
+            ) &&
+                currentScreen >= MinScreen &&
+                currentScreen <= MaxScreen)
+            {
+                _lastScreen = currentScreen;
+                _lastArea = GetAreaNameForScreen(currentScreen);
+            }
         }
 
         private void RecalculatePb()
@@ -304,208 +242,93 @@ namespace JKMetricsLite
             _pbScreenInArea = -1;
             _pbScreen = -1;
 
-            foreach (string area in _areaAppearedOrder)
+            for (int i = 0; i < _areaAppearedOrder.Count; i++)
             {
-                if (!IsAreaIncludedForMetrics(area))
-                {
-                    continue;
-                }
+                string area = _areaAppearedOrder[i];
 
-                if (!_areaScreenAppearedOrder.ContainsKey(area))
+                if (!IsAreaIncludedForMetrics(area) ||
+                    !_areaScreenAppearedOrder.ContainsKey(area))
                 {
                     continue;
                 }
 
                 List<int> screens = _areaScreenAppearedOrder[area];
 
-                for (int i = 0; i < screens.Count; i++)
+                for (int j = 0; j < screens.Count; j++)
                 {
-                    int screen = screens[i];
-
-                    if (_screenFrames[screen] <= 0)
-                    {
-                        continue;
-                    }
-
-                    UpdatePbIfNeeded(screen, area);
+                    UpdatePbIfNeeded(screens[j], area);
                 }
             }
-        }
-
-        private bool IsValidPb()
-        {
-            if (_pbAreaIndex <= 0 || _pbScreenInArea <= 0)
-            {
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(_pbArea) || _pbArea == "Unknown")
-            {
-                return false;
-            }
-
-            if (!IsAreaIncludedForMetrics(_pbArea))
-            {
-                return false;
-            }
-
-            if (!_areaScreenAppearedOrder.ContainsKey(_pbArea))
-            {
-                return false;
-            }
-
-            int screenInArea = GetScreenInAreaOrder(_pbArea, _pbScreen);
-
-            return screenInArea == _pbScreenInArea;
         }
 
         private int? ReadSavedAttempt()
         {
             try
             {
-                if (!File.Exists(_statePath))
+                List<Dictionary<string, string>> rows =
+                    ReadTsvRows(_currentProgressPath);
+
+                if (rows.Count == 0)
                 {
                     return null;
                 }
 
-                string[] lines = File.ReadAllLines(_statePath, Encoding.UTF8);
+                int attempt;
 
-                foreach (string line in lines)
-                {
-                    string[] parts = line.Split('\t');
-
-                    if (parts.Length >= 2 && parts[0] == "ATTEMPT")
-                    {
-                        int attempt;
-                        if (int.TryParse(parts[1], out attempt))
-                        {
-                            return attempt;
-                        }
-
-                        return null;
-                    }
-                }
+                return int.TryParse(
+                    GetTsvValue(rows[0], "attempt"),
+                    out attempt
+                )
+                    ? (int?)attempt
+                    : null;
             }
             catch (Exception ex)
             {
                 LogError("Read saved attempt", ex);
+                return null;
             }
-
-            return null;
         }
 
-        private void SaveState()
+        private List<Dictionary<string, string>> ReadTsvRows(string path)
         {
-            try
+            string[] lines = File.ReadAllLines(path, Encoding.UTF8);
+            var rows = new List<Dictionary<string, string>>();
+
+            if (lines.Length <= 1)
             {
-                var sb = new StringBuilder();
-
-                sb.AppendLine("VERSION\t5");
-                sb.AppendLine("ATTEMPT\t" + (_stateAttempt.HasValue ? _stateAttempt.Value.ToString() : "UNKNOWN"));
-                sb.AppendLine("TOTAL\t" + _totalFrames);
-                sb.AppendLine("LAST\t" + _lastScreen + "\t" + EncodeText(_lastArea));
-                sb.AppendLine(
-                    "PB\t" +
-                    EncodeText(_pbArea) + "\t" +
-                    _pbAreaIndex + "\t" +
-                    _pbScreenInArea + "\t" +
-                    _pbScreen
-                );
-
-                for (int screen = MinScreen; screen <= MaxScreen; screen++)
-                {
-                    if (_screenFrames[screen] > 0)
-                    {
-                        sb.AppendLine("SCREEN\t" + screen + "\t" + _screenFrames[screen]);
-                    }
-                }
-
-                foreach (KeyValuePair<string, int> pair in _areaFrames)
-                {
-                    string area = pair.Key;
-
-                    if (area == "Unknown")
-                    {
-                        continue;
-                    }
-
-                    int frames = pair.Value;
-                    int firstReachedFrames = 0;
-                    long firstReachedMilliseconds = 0;
-
-                    if (_areaFirstReachedFrames.ContainsKey(area))
-                    {
-                        firstReachedFrames = _areaFirstReachedFrames[area];
-                    }
-
-                    if (_areaFirstReachedMilliseconds.ContainsKey(area))
-                    {
-                        firstReachedMilliseconds = _areaFirstReachedMilliseconds[area];
-                    }
-                    else
-                    {
-                        firstReachedMilliseconds = FramesToMilliseconds(firstReachedFrames);
-                    }
-
-                    sb.AppendLine(
-                        "AREA\t" +
-                        EncodeText(area) + "\t" +
-                        frames + "\t" +
-                        firstReachedFrames + "\t" +
-                        firstReachedMilliseconds
-                    );
-                }
-
-                for (int i = 0; i < _areaAppearedOrder.Count; i++)
-                {
-                    string area = _areaAppearedOrder[i];
-
-                    if (area == "Unknown")
-                    {
-                        continue;
-                    }
-
-                    sb.AppendLine("ORDER\t" + EncodeText(area));
-                }
-
-                foreach (KeyValuePair<string, List<int>> pair in _areaScreenAppearedOrder)
-                {
-                    string area = pair.Key;
-
-                    if (area == "Unknown")
-                    {
-                        continue;
-                    }
-
-                    List<int> screens = pair.Value;
-
-                    for (int i = 0; i < screens.Count; i++)
-                    {
-                        sb.AppendLine(
-                            "AREA_SCREEN_ORDER\t" +
-                            EncodeText(area) + "\t" +
-                            screens[i]
-                        );
-                    }
-                }
-
-                foreach (string area in _excludedAreas)
-                {
-                    if (area == "Unknown")
-                    {
-                        continue;
-                    }
-
-                    sb.AppendLine("EXCLUDED_AREA\t" + EncodeText(area));
-                }
-
-                File.WriteAllText(_statePath, sb.ToString(), Encoding.UTF8);
+                return rows;
             }
-            catch (Exception ex)
+
+            string[] headers = lines[0].Split('\t');
+
+            for (int i = 1; i < lines.Length; i++)
             {
-                LogError("Save state", ex);
+                if (string.IsNullOrWhiteSpace(lines[i]))
+                {
+                    continue;
+                }
+
+                string[] values = lines[i].Split('\t');
+                var row = new Dictionary<string, string>();
+
+                for (int j = 0; j < headers.Length; j++)
+                {
+                    row[headers[j]] = j < values.Length ? values[j] : "";
+                }
+
+                rows.Add(row);
             }
+
+            return rows;
+        }
+
+        private string GetTsvValue(
+            Dictionary<string, string> row,
+            string key
+        )
+        {
+            string value;
+            return row.TryGetValue(key, out value) ? value : "";
         }
     }
 }
-

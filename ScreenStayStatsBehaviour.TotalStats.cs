@@ -8,33 +8,33 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
-        private struct ActivityTotals
+        private struct TotalStats
         {
             public long TotalFrames;
             public long TotalJumps;
             public long TotalFalls;
         }
 
-        private void AppendActivitySampleTsv()
+        private void AppendTotalStatsTsv()
         {
             try
             {
-                ActivityTotals totals;
+                TotalStats totals;
 
-                if (!TryGetCurrentActivityTotals(out totals))
+                if (!TryGetTotalStats(out totals))
                 {
                     return;
                 }
 
                 bool needsHeader =
-                    !File.Exists(_activitySamplesPath) ||
-                    new FileInfo(_activitySamplesPath).Length == 0;
+                    !File.Exists(_totalStatsPath) ||
+                    new FileInfo(_totalStatsPath).Length == 0;
 
                 var sb = new StringBuilder();
 
                 if (needsHeader)
                 {
-                    sb.AppendLine("timestamp\ttotal_frames\ttotal_jumps\ttotal_falls");
+                    sb.AppendLine("sampled_at\ttotal_frames\ttotal_jumps\ttotal_falls");
                 }
 
                 sb.AppendLine(
@@ -44,17 +44,17 @@ namespace JKMetricsLite
                     totals.TotalFalls
                 );
 
-                File.AppendAllText(_activitySamplesPath, sb.ToString(), Encoding.UTF8);
+                File.AppendAllText(_totalStatsPath, sb.ToString(), Encoding.UTF8);
             }
             catch (Exception ex)
             {
-                LogError("Append activity sample TSV", ex);
+                LogError("Append total stats TSV", ex);
             }
         }
 
-        private bool TryGetCurrentActivityTotals(out ActivityTotals totals)
+        private bool TryGetTotalStats(out TotalStats totals)
         {
-            totals = default(ActivityTotals);
+            totals = default(TotalStats);
 
             PlayerStats? stats = TryGetAllTimeAchievementStats();
 

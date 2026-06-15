@@ -13,7 +13,7 @@
       line-height: 1.35;
     }
 
-    #pb {
+    #progress {
       display: inline-block;
       margin-bottom: 8px;
       padding: 8px 14px;
@@ -58,8 +58,29 @@
 
     th.graph,
     td.graph {
-      width: 32ch;
-      white-space: pre;
+      width: 240px;
+      min-width: 240px;
+    }
+
+    td.graph {
+      vertical-align: middle;
+    }
+
+    .duration-track {
+      width: 100%;
+      height: 12px;
+      box-sizing: border-box;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .duration-fill {
+      height: 100%;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .current .duration-fill {
+      background: #fff;
     }
 
     .current td {
@@ -69,14 +90,17 @@
   </style>
 </head>
 <body>
-<div id="pb">PB: -</div>
+<div id="progress">
+  <div id="current">Current: -</div>
+  <div id="pb">PB: -</div>
+</div>
 <br>
 <table>
   <thead>
     <tr>
       <th class="area">Area</th>
       <th class="time">Split Time</th>
-      <th class="graph">Stay Graph</th>
+      <th class="graph">Duration Bar</th>
       <th class="time">Duration</th>
     </tr>
   </thead>
@@ -85,10 +109,8 @@
 </table>
 
 <script>
-const areaFilePath = "area_bar_graph.tsv";
-const statusFilePath = "progress_status.tsv";
-const graphWidth = 30;
-
+const areaFilePath = "../raw_data/area_metrics.tsv";
+const progressFilePath = "../raw_data/current_progress.tsv";
 function escapeHtml(value) {
   return value
     .replaceAll("&", "&amp;")
@@ -97,34 +119,74 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-function buildGraph(frames, maxFrames) {
-  if (maxFrames <= 0 || frames <= 0) {
-    return "";
+function getDurationPercent(durationMs, maxDurationMs) {
+  if (maxDurationMs <= 0 || durationMs <= 0) {
+    return 0;
   }
 
-  const width = Math.round(frames * graphWidth / maxFrames);
-  return "#".repeat(width);
+  return Math.max(1, Math.min(100, durationMs * 100 / maxDurationMs));
 }
 
-async function updateStatus() {
+function parseRows(text) {
+  const lines = text.trim().split(/\r?\n/);
+
+  if (lines.length <= 1) {
+    return [];
+  }
+
+  const header = lines.shift().split("\t");
+
+  return lines.map(line => {
+    const cols = line.split("\t");
+    const row = {};
+
+    header.forEach((key, index) => {
+      row[key] = cols[index] || "";
+    });
+
+    return row;
+  });
+}
+
+function formatProgress(areaIndex, screenInArea) {
+  return areaIndex > 0 && screenInArea > 0
+    ? areaIndex + "-" + screenInArea
+    : "-";
+}
+
+function formatTime(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+    return "-";
+  }
+
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(totalSeconds / 60) % 60;
+  const seconds = totalSeconds % 60;
+
+  return String(hours).padStart(2, " ") + "h " +
+    String(minutes).padStart(2, " ") + "m " +
+    String(seconds).padStart(2, " ") + "s";
+}
+
+async function updateProgress() {
   try {
-    const res = await fetch(statusFilePath + "?t=" + Date.now());
+    const res = await fetch(progressFilePath + "?t=" + Date.now());
     const text = await res.text();
-    const lines = text.trim().split(/\r?\n/);
+    const row = parseRows(text)[0] || {};
+    const current = formatProgress(
+      Number(row.current_area_index),
+      Number(row.current_screen_in_area)
+    );
+    const pb = formatProgress(
+      Number(row.pb_area_index),
+      Number(row.pb_screen_in_area)
+    );
 
-    for (const line of lines.slice(1)) {
-      const cols = line.split("\t");
-      const key = cols[0] || "";
-      const value = cols[1] || "";
-
-      if (key === "pb") {
-        document.getElementById("pb").textContent = value || "PB: -";
-        return;
-      }
-    }
-
-    document.getElementById("pb").textContent = "PB: -";
+    document.getElementById("current").textContent = "Current: " + current;
+    document.getElementById("pb").textContent = "PB: " + pb;
   } catch (e) {
+    document.getElementById("current").textContent = "Current: -";
     document.getElementById("pb").textContent = "PB: -";
   }
 }
@@ -134,49 +196,48 @@ async function updateAreaTable() {
     const res = await fetch(areaFilePath + "?t=" + Date.now());
     const text = await res.text();
 
-    const lines = text.trim().split(/\r?\n/);
     const tbody = document.getElementById("rows");
+    const data = parseRows(text);
 
-    if (lines.length <= 1) {
+    if (data.length === 0) {
       tbody.innerHTML = "";
       return;
     }
 
-    const rows = lines.slice(1).map(line => {
-      const cols = line.split("\t");
+    const rows = data.filter(row => row.is_excluded !== "1").map((row, index) => {
       return {
-        areaIndex: cols[0] || "",
-        areaName: cols[1] || "",
-        firstReach: cols[3] || "",
-        stayFrames: Number.parseInt(cols[4] || "0", 10) || 0,
-        stayTime: cols[5] || "",
-        isCurrent: cols[6] === "1"
+        areaIndex: index + 1,
+        splitTimeMs: row.split_time_ms === "" ? Number.NaN : Number(row.split_time_ms),
+        durationMs: Number(row.duration_ms) || 0,
+        isCurrent: row.is_current === "1"
       };
     });
 
-    const maxStayFrames = rows.reduce((max, row) => Math.max(max, row.stayFrames), 0);
+    const maxDurationMs = rows.reduce((max, row) => Math.max(max, row.durationMs), 0);
 
     const html = rows.map(row => {
-      const graph = buildGraph(row.stayFrames, maxStayFrames);
-      const areaText = (row.areaIndex === "Unknown" || row.areaName === "Unknown") ? "Unknown" : "Area " + row.areaIndex;
+      const durationPercent = getDurationPercent(row.durationMs, maxDurationMs);
+      const areaText = "Area " + row.areaIndex;
 
       return "<tr" + (row.isCurrent ? " class='current'" : "") + ">" +
         "<td class='area'>" + escapeHtml(areaText) + "</td>" +
-        "<td class='time'>" + escapeHtml(row.firstReach) + "</td>" +
-        "<td class='graph'>" + escapeHtml(graph) + "</td>" +
-        "<td class='time'>" + escapeHtml(row.stayTime) + (row.isCurrent ? " &lt;" : "") + "</td>" +
+        "<td class='time'>" + escapeHtml(formatTime(row.splitTimeMs)) + "</td>" +
+        "<td class='graph'><div class='duration-track'>" +
+          "<div class='duration-fill' style='width:" + durationPercent.toFixed(2) + "%'></div>" +
+        "</div></td>" +
+        "<td class='time'>" + escapeHtml(formatTime(row.durationMs)) + (row.isCurrent ? " &lt;" : "") + "</td>" +
       "</tr>";
     }).join("");
 
     tbody.innerHTML = html;
   } catch (e) {
     document.getElementById("rows").innerHTML =
-      "<tr><td colspan='4'>Failed to load area_bar_graph.tsv</td></tr>";
+      "<tr><td colspan='4'>Failed to load area_metrics.tsv</td></tr>";
   }
 }
 
 async function update() {
-  await updateStatus();
+  await updateProgress();
   await updateAreaTable();
 }
 

@@ -12,9 +12,9 @@ Main features:
 [*]Tracks PB progress based on the furthest reached area/screen
 [*]Lets you exclude optional or hidden areas from displayed run metrics
 [*]Generates OBS-ready overlays for blind playthroughs, exploration, and speedruns
-[*]Provides area name, area number, speedrun-style, and screen timeline views
+[*]Provides area name, area number, speedrun-style, and real-time screen graph views
 [*]Saves TSV metrics that can be reviewed later or used for custom analysis
-[*]Records long-term jump activity for heatmaps, monthly charts, or personal recaps
+[*]Records long-term totals for heatmaps, monthly charts, or personal recaps
 [/list]
 
 [hr]
@@ -33,6 +33,14 @@ To change the output folder, edit OUTPUT_DIR in JKMetricsLite.env. Leave it empt
 
 Existing overlay HTML files are not overwritten. Delete an HTML file and restart the game to regenerate it.
 
+[b]Generated folders[/b]
+
+[list]
+[*][b]raw_data[/b] - Simple TSV data for overlays or custom analysis.
+[*][b]obs[/b] - Real-time HTML views for OBS Browser Sources.
+[*][b]local[/b] - Browser views intended to be opened directly.
+[/list]
+
 [hr]
 
 [h2]Run Metrics[/h2]
@@ -40,22 +48,24 @@ Existing overlay HTML files are not overwritten. Delete an HTML file and restart
 Run metrics are for the current attempt. They are useful for blind custom map playthroughs, general exploration, and speedruns.
 
 [list]
-[*][b]area_bar_graph.tsv[/b] - Area split time, stay frames, and duration data.
-[*][b]screen_bar_graph.tsv[/b] - Screen stay frames and duration data.
-[*][b]screen_timeline.tsv[/b] - Screen movement history for the timeline graph.
-[*][b]progress_status.tsv[/b] - Small status file used by OBS overlays for PB display.
-[*][b]metrics_state.tsv[/b] - Saved run state used when continuing the same game.
+[*][b]raw_data/area_metrics.tsv[/b] - Area-keyed split time, duration, and display-state data.
+[*][b]raw_data/screen_timeline.tsv[/b] - Time-keyed screen data for the real-time graph.
+[*][b]raw_data/screen_order.tsv[/b] - First-reached screen order for each area.
+[*][b]raw_data/current_progress.tsv[/b] - Attempt, elapsed time, current screen, and Current/PB progress.
 [/list]
+
+Raw TSV files store simple numeric values such as milliseconds. Display formatting is handled by the HTML views.
+Run metrics are restored from area_metrics.tsv, screen_order.tsv, and current_progress.tsv when continuing the same attempt.
 
 [b]OBS Views[/b]
 
-After launching the game with the mod enabled, open OBS and add a Browser Source. Enable local file mode, then select one of the generated HTML files from the JKMetricsLite output folder.
+After launching the game with the mod enabled, open OBS and add a Browser Source. Enable local file mode, then select one of the generated HTML files from the obs folder.
 
 [list]
-[*][b]area_name.html[/b] - Shows area names, split times, stay graphs, and duration.
-[*][b]area_no.html[/b] - Shows area numbers instead of area names.
-[*][b]area_name_speedrun.html[/b] - A compact speedrun-focused area table using m s ms time format.
-[*][b]screen_timeline.html[/b] - Displays screen transitions as a real-time graph.
+[*][b]obs/area_name.html[/b] - Shows Current, PB, area names, split times, relative duration bars, and duration.
+[*][b]obs/area_no.html[/b] - Shows area numbers instead of area names.
+[*][b]obs/area_name_speedrun.html[/b] - A compact speedrun-focused area table using m s ms time format.
+[*][b]obs/screen_graph.html[/b] - Displays screen transitions as a real-time graph.
 [/list]
 
 [hr]
@@ -65,12 +75,12 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 Long-term metrics are accumulated across play sessions and are not reset with run metrics.
 
 [list]
-[*][b]jump_activity.tsv[/b] - Timestamped total frames, jumps, and falls for activity charts or custom analysis.
+[*][b]raw_data/total_stats.tsv[/b] - Sampled total frames, jumps, and falls for activity charts or custom analysis.
 [/list]
 
 [b]Browser View[/b]
 
-jump_activity.html is a convenience browser view for jump_activity.tsv. Open it directly in a browser and select the TSV file to view hourly jump heatmaps and monthly jumps.
+Open local/recap.html directly in a browser and select raw_data/total_stats.tsv to view jump-based recaps, including total jumps/falls, active days, streaks, best day/month/weekday/hour, hourly heatmaps, and monthly jumps.
 
 The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
 
@@ -114,7 +124,7 @@ Screens that do not belong to any defined area are ignored for PB, split times, 
 
 Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
 
-If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and enable [b]Exclude This Area[/b]. The area is treated like [b]Unknown[/b] for PB, area number, area name, and screen summary output. The raw area data is still kept internally, so disabling the option restores it to the displayed metrics. In an [b]Unknown[/b] area, the option is shown as checked and cannot be changed because that area is already excluded by definition.
+If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and enable [b]Exclude This Area[/b]. The area is ignored for PB and hidden by the bundled area views. Its row remains in area_metrics.tsv with is_excluded set to 1, so disabling the option restores the accumulated split time and duration. In an [b]Unknown[/b] area, the option is shown as checked and cannot be changed because that area is already excluded by definition.
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
@@ -126,7 +136,7 @@ Split times are captured from the game's run timer. Duration is counted separate
 
 Area, screen, and PB metrics reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
 
-jump_activity.tsv is not reset with run metrics. It keeps accumulating long-term jump activity data.
+total_stats.tsv is not reset with run metrics. It keeps accumulating long-term stats.
 
 [hr]
 

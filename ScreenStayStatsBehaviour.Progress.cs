@@ -55,7 +55,7 @@ namespace JKMetricsLite
 
             RecalculatePb();
             WriteOutputFiles(true);
-            SaveState();
+            WriteScreenOrderTsv(false);
         }
 
         private bool IsAreaIncludedForMetrics(string areaName)
@@ -68,15 +68,9 @@ namespace JKMetricsLite
             return !_excludedAreas.Contains(areaName);
         }
 
-        private string GetDisplayAreaName(string areaName)
-        {
-            return IsAreaIncludedForMetrics(areaName) ? areaName : "Unknown";
-        }
-
         private void RecordAreaFirstReach(string areaName)
         {
-            int firstReachedFrames = _totalFrames;
-            long firstReachedMilliseconds = FramesToMilliseconds(firstReachedFrames);
+            long firstReachedMilliseconds = FramesToMilliseconds(_totalFrames);
 
             TimeSpan? currentRunTime = TryGetCurrentRunTime();
 
@@ -84,17 +78,8 @@ namespace JKMetricsLite
             {
                 firstReachedMilliseconds = (long)Math.Round(currentRunTime.Value.TotalMilliseconds);
 
-                double secondsPerFrame = GetSecondsPerFrame();
-
-                if (secondsPerFrame > 0)
-                {
-                    firstReachedFrames = (int)Math.Round(
-                        currentRunTime.Value.TotalSeconds / secondsPerFrame
-                    );
-                }
             }
 
-            _areaFirstReachedFrames[areaName] = firstReachedFrames;
             _areaFirstReachedMilliseconds[areaName] = firstReachedMilliseconds;
         }
 
@@ -113,6 +98,7 @@ namespace JKMetricsLite
             if (!_areaScreenAppearedOrder[areaName].Contains(screen))
             {
                 _areaScreenAppearedOrder[areaName].Add(screen);
+                _screenOrderDirty = true;
             }
         }
 

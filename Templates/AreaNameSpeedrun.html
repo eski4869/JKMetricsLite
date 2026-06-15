@@ -63,7 +63,7 @@
 </table>
 
 <script>
-const areaFilePath = "area_bar_graph.tsv";
+const areaFilePath = "../raw_data/area_metrics.tsv";
 
 function escapeHtml(value) {
   return value
@@ -73,37 +73,72 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function parseRows(text) {
+  const lines = text.trim().split(/\r?\n/);
+
+  if (lines.length <= 1) {
+    return [];
+  }
+
+  const header = lines.shift().split("\t");
+
+  return lines.map(line => {
+    const cols = line.split("\t");
+    const row = {};
+
+    header.forEach((key, index) => {
+      row[key] = cols[index] || "";
+    });
+
+    return row;
+  });
+}
+
+function formatSpeedrunTime(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+    return "-";
+  }
+
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const ms = Math.floor(milliseconds % 1000);
+
+  return String(minutes).padStart(3, " ") + "m " +
+    String(seconds).padStart(2, "0") + "s " +
+    String(ms).padStart(3, "0") + "ms";
+}
+
 async function updateAreaTable() {
   try {
     const res = await fetch(areaFilePath + "?t=" + Date.now());
     const text = await res.text();
 
-    const lines = text.trim().split(/\r?\n/);
     const tbody = document.getElementById("rows");
+    const rows = parseRows(text);
 
-    if (lines.length <= 1) {
+    if (rows.length === 0) {
       tbody.innerHTML = "";
       return;
     }
 
-    const html = lines.slice(1).map(line => {
-      const cols = line.split("\t");
-      const areaName = cols[1] || "";
-      const isCurrent = cols[6] === "1";
-      const firstReach = cols[7] || "";
-      const stayTime = cols[8] || "";
+    const html = rows.filter(row => row.is_excluded !== "1").map(row => {
+      const areaName = row.area_name || "";
+      const isCurrent = row.is_current === "1";
+      const splitTimeMs = row.split_time_ms === "" ? Number.NaN : Number(row.split_time_ms);
+      const durationMs = Number(row.duration_ms) || 0;
 
       return "<tr" + (isCurrent ? " class='current'" : "") + ">" +
         "<td class='area'>" + escapeHtml(areaName) + "</td>" +
-        "<td class='time'>" + escapeHtml(firstReach) + "</td>" +
-        "<td class='time'>" + escapeHtml(stayTime) + (isCurrent ? " &lt;" : "") + "</td>" +
+        "<td class='time'>" + escapeHtml(formatSpeedrunTime(splitTimeMs)) + "</td>" +
+        "<td class='time'>" + escapeHtml(formatSpeedrunTime(durationMs)) + (isCurrent ? " &lt;" : "") + "</td>" +
       "</tr>";
     }).join("");
 
     tbody.innerHTML = html;
   } catch (e) {
     document.getElementById("rows").innerHTML =
-      "<tr><td colspan='3'>Failed to load area_bar_graph.tsv</td></tr>";
+      "<tr><td colspan='3'>Failed to load area_metrics.tsv</td></tr>";
   }
 }
 

@@ -54,7 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ModEntry.cs" />
-    <Compile Include="ScreenStayStatsBehaviour.Activity.cs" />
+    <Compile Include="ScreenStayStatsBehaviour.TotalStats.cs" />
     <Compile Include="ScreenStayStatsBehaviour.Formatting.cs" />
     <Compile Include="ScreenStayStatsBehaviour.Logging.cs" />
     <Compile Include="ScreenStayStatsBehaviour.Overlays.cs" />
@@ -67,8 +67,8 @@
     <EmbeddedResource Include="Templates\AreaName.html" />
     <EmbeddedResource Include="Templates\AreaNo.html" />
     <EmbeddedResource Include="Templates\AreaNameSpeedrun.html" />
-    <EmbeddedResource Include="Templates\ScreenTimeline.html" />
-    <EmbeddedResource Include="Templates\JumpActivity.html" />
+    <EmbeddedResource Include="Templates\ScreenGraph.html" />
+    <EmbeddedResource Include="Templates\Recap.html" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
