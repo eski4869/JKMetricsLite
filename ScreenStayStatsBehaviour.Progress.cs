@@ -10,41 +10,53 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
-        internal static bool IsCurrentAreaIncludedForMetrics()
+        internal static string GetCurrentAreaName()
+        {
+            if (_instance == null)
+            {
+                return "Unknown";
+            }
+
+            return _instance._lastArea;
+        }
+
+        internal static bool IsCurrentAreaExcludedFromMetrics()
         {
             if (_instance == null)
             {
                 return true;
             }
 
-            return _instance.IsCurrentAreaIncludedForMetricsInstance();
+            return !_instance.IsAreaIncludedForMetrics(_instance._lastArea);
         }
 
-        internal static void SetCurrentAreaIncludedForMetrics(bool isIncluded)
+        internal static bool CanChangeCurrentAreaMetricsExclusion()
+        {
+            return _instance != null &&
+                !string.IsNullOrEmpty(_instance._lastArea) &&
+                _instance._lastArea != "Unknown";
+        }
+
+        internal static void SetCurrentAreaExcludedFromMetrics(bool isExcluded)
         {
             if (_instance == null)
             {
                 return;
             }
 
-            _instance.SetCurrentAreaIncludedForMetricsInstance(isIncluded);
+            _instance.SetCurrentAreaExcludedFromMetricsInstance(isExcluded);
         }
 
-        private bool IsCurrentAreaIncludedForMetricsInstance()
-        {
-            return IsAreaIncludedForMetrics(_lastArea);
-        }
-
-        private void SetCurrentAreaIncludedForMetricsInstance(bool isIncluded)
+        private void SetCurrentAreaExcludedFromMetricsInstance(bool isExcluded)
         {
             if (string.IsNullOrEmpty(_lastArea) || _lastArea == "Unknown")
             {
                 return;
             }
 
-            bool changed = isIncluded
-                ? _excludedAreas.Remove(_lastArea)
-                : _excludedAreas.Add(_lastArea);
+            bool changed = isExcluded
+                ? _excludedAreas.Add(_lastArea)
+                : _excludedAreas.Remove(_lastArea);
 
             if (!changed)
             {

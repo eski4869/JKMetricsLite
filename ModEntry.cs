@@ -263,18 +263,23 @@ namespace JKMetricsLite
 
     public class CurrentAreaMetricsToggle : ITextToggle
     {
-        public CurrentAreaMetricsToggle() : base(ScreenStayStatsBehaviour.IsCurrentAreaIncludedForMetrics())
+        public CurrentAreaMetricsToggle() : base(ScreenStayStatsBehaviour.IsCurrentAreaExcludedFromMetrics())
         {
         }
 
         protected override string GetName()
         {
-            return "Current Area Metrics";
+            return "Exclude " + ScreenStayStatsBehaviour.GetCurrentAreaName() + " from Metrics";
+        }
+
+        protected override bool CanChange()
+        {
+            return ScreenStayStatsBehaviour.CanChangeCurrentAreaMetricsExclusion();
         }
 
         protected override void OnToggle()
         {
-            ScreenStayStatsBehaviour.SetCurrentAreaIncludedForMetrics(toggle);
+            ScreenStayStatsBehaviour.SetCurrentAreaExcludedFromMetrics(toggle);
         }
     }
 
