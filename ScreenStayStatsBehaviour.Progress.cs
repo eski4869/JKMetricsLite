@@ -399,14 +399,44 @@ namespace JKMetricsLite
                 return "Unknown";
             }
 
-            string name = rawName;
+            string name = RemoveAreaFormattingTags(rawName).Trim();
 
             if (name.StartsWith("LOCATION_"))
             {
                 name = name.Substring("LOCATION_".Length);
             }
 
-            return name.Replace('_', ' ');
+            name = name.Replace('_', ' ').Trim();
+
+            return name.Length == 0 ? "Unknown" : name;
+        }
+
+        private string RemoveAreaFormattingTags(string value)
+        {
+            var result = new StringBuilder();
+            int index = 0;
+
+            while (index < value.Length)
+            {
+                if (value[index] != '{')
+                {
+                    result.Append(value[index]);
+                    index++;
+                    continue;
+                }
+
+                int closingBraceIndex = value.IndexOf('}', index + 1);
+
+                if (closingBraceIndex < 0)
+                {
+                    result.Append(value.Substring(index));
+                    break;
+                }
+
+                index = closingBraceIndex + 1;
+            }
+
+            return result.ToString();
         }
     }
 }
