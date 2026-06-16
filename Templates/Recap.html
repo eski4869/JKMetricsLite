@@ -31,13 +31,13 @@
     }
 
     .shell {
-      max-width: 1180px;
+      max-width: 1080px;
       margin: 0 auto;
     }
 
     header {
       display: flex;
-      align-items: flex-end;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 18px;
       padding-bottom: 16px;
@@ -46,9 +46,9 @@
     }
 
     h1 {
-      margin: 0 0 6px;
-      font-size: 28px;
-      line-height: 1.15;
+      margin: 0;
+      font-size: 42px;
+      line-height: 1.1;
     }
 
     h2 {
@@ -62,12 +62,29 @@
       color: var(--muted);
     }
 
+    .status-loading,
+    .status-error {
+      color: #e74c3c;
+      font-weight: 700;
+    }
+
     .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .control-row {
       display: flex;
       align-items: center;
       justify-content: flex-end;
       gap: 10px;
-      flex-wrap: wrap;
+    }
+
+    .control-status {
+      text-align: right;
+      font-size: 13px;
     }
 
     input[type="file"] {
@@ -87,6 +104,13 @@
 
     button:hover {
       border-color: var(--accent);
+    }
+
+    #reloadFile {
+      min-width: 34px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
     }
 
     #yearLabel {
@@ -115,6 +139,13 @@
       font-size: 22px;
       margin-top: 4px;
       font-variant-numeric: tabular-nums;
+    }
+
+    .metric-sub {
+      display: block;
+      color: var(--muted);
+      font-size: 15px;
+      margin-top: 2px;
     }
 
     section {
@@ -169,6 +200,36 @@
       height: 14px;
     }
 
+    .monthly-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: -4px 0 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .monthly-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .monthly-swatch {
+      width: 12px;
+      height: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .monthly-swatch.jumps {
+      background: #28a745;
+    }
+
+    .monthly-swatch.falls {
+      background: #e74c3c;
+    }
+
+
     .monthly {
       display: grid;
       gap: 10px;
@@ -176,25 +237,52 @@
 
     .month-row {
       display: grid;
-      grid-template-columns: 42px 1fr 210px;
+      grid-template-columns: 42px 1fr 340px;
       gap: 12px;
       align-items: center;
     }
 
+    .month-header {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
     .bar-track {
+      position: relative;
       height: 20px;
       background: var(--empty);
       border: 1px solid rgba(255, 255, 255, 0.06);
+      overflow: hidden;
     }
 
     .bar {
       height: 100%;
-      background: linear-gradient(90deg, var(--mid), var(--high), var(--max));
+    }
+
+    .fall-bar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      background: #e74c3c;
     }
 
     .value {
-      text-align: right;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 10px;
       font-variant-numeric: tabular-nums;
+    }
+
+    .value-item {
+      text-align: right;
+    }
+
+    .value-number {
+      font-size: 14px;
+      font-weight: 600;
     }
 
     .empty-note {
@@ -202,18 +290,33 @@
       padding: 20px 0 6px;
     }
 
-    @media (max-width: 760px) {
-      body {
-        padding: 16px;
-      }
-
+    @media (max-width: 1080px) {
       header {
         align-items: flex-start;
         flex-direction: column;
       }
 
       .controls {
+        align-items: flex-start;
         justify-content: flex-start;
+      }
+
+      .control-row {
+        justify-content: flex-start;
+      }
+
+      .control-status {
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 16px;
+      }
+
+      h1 {
+        font-size: 36px;
       }
 
       .summary {
@@ -231,20 +334,27 @@
 <div class="shell">
   <header>
     <div>
-      <h1>Recap</h1>
-      <div id="status" class="sub">Choose total_stats.tsv to render your metrics.</div>
+      <h1 id="recapTitle">Jump King Recap</h1>
     </div>
     <div class="controls">
-      <input id="fileInput" type="file" accept=".tsv,text/tab-separated-values,text/plain">
-      <button id="prevYear" title="Previous year">&lt;</button>
-      <div id="yearLabel">----</div>
-      <button id="nextYear" title="Next year">&gt;</button>
+      <div class="control-row">
+        <button id="openFile" title="Choose total_stats.tsv">Choose TSV File</button>
+        <input id="fileInput" type="file" accept=".tsv,text/tab-separated-values,text/plain" hidden>
+        <button id="reloadFile" title="Reload selected TSV" aria-label="Reload selected TSV" disabled>&#x21bb;</button>
+        <button id="prevYear" title="Previous year">&lt;</button>
+        <div id="yearLabel">----</div>
+        <button id="nextYear" title="Next year">&gt;</button>
+      </div>
+      <div id="status" class="sub control-status status-loading">Choose total_stats.tsv to render your metrics.</div>
     </div>
   </header>
 
   <div class="summary">
     <div class="metric"><span class="label">Total jumps</span><strong id="totalJumps">-</strong></div>
     <div class="metric"><span class="label">Total falls</span><strong id="totalFalls">-</strong></div>
+    <div class="metric"><span class="label">Fall rate</span><strong id="fallRate">-</strong></div>
+    <div class="metric"><span class="label">Play time</span><strong id="playTime">-</strong></div>
+    <div class="metric"><span class="label">Idle time</span><strong id="idleTime">-</strong></div>
     <div class="metric"><span class="label">Active days</span><strong id="activeDays">-</strong></div>
     <div class="metric"><span class="label">Longest streak</span><strong id="longestStreak">-</strong></div>
     <div class="metric"><span class="label">Current streak</span><strong id="currentStreak">-</strong></div>
@@ -262,7 +372,8 @@
   </section>
 
   <section>
-    <h2>Monthly Jumps / Falls</h2>
+    <h2>Monthly Activity</h2>
+    <div class="monthly-legend"><span><span class="monthly-swatch jumps"></span>Jumps</span><span><span class="monthly-swatch falls"></span>Falls</span></div>
     <div id="monthly" class="monthly"></div>
   </section>
 </div>
@@ -274,6 +385,8 @@ const colors = ["var(--empty)", "var(--low)", "var(--mid)", "var(--high)", "var(
 
 let samples = [];
 let selectedYear = null;
+let selectedFile = null;
+let selectedFileHandle = null;
 
 function parseTsv(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -308,7 +421,7 @@ function parseTsv(text) {
     Number.isFinite(row.totalFrames) &&
     Number.isFinite(row.totalJumps) &&
     Number.isFinite(row.totalFalls)
-  ).sort((a, b) => a.sampledAt.localeCompare(b.sampledAt));
+  );
 }
 
 function buildDeltas(rows) {
@@ -333,7 +446,8 @@ function buildDeltas(rows) {
       localDate: formatDateKey(current.date),
       frames,
       jumps,
-      falls
+      falls,
+      idleFrames: frames > 0 && jumps === 0 ? frames : 0
     });
   }
 
@@ -354,15 +468,16 @@ function dateKeyToDayNumber(key) {
   return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
 }
 
-function addToMap(map, key, frames, jumps, falls) {
+function addToMap(map, key, frames, jumps, falls, idleFrames) {
   if (!map.has(key)) {
-    map.set(key, { frames: 0, jumps: 0, falls: 0 });
+    map.set(key, { frames: 0, jumps: 0, falls: 0, idleFrames: 0 });
   }
 
   const item = map.get(key);
   item.frames += frames;
   item.jumps += jumps;
   item.falls += falls;
+  item.idleFrames += idleFrames;
 }
 
 function calculateStreaks(activeDates) {
@@ -411,13 +526,35 @@ function formatFrames(frames) {
   return hours > 0 ? `${hours}h ${String(minutes).padStart(2, "0")}m` : `${minutes}m`;
 }
 
+function setMetric(id, primary, secondary) {
+  const node = document.getElementById(id);
+  node.innerHTML = secondary
+    ? `${primary}<span class="metric-sub">${secondary}</span>`
+    : primary;
+}
+
+function setStatus(text, tone) {
+  const node = document.getElementById("status");
+  node.textContent = text;
+  node.className = tone ? `sub control-status status-${tone}` : "sub control-status";
+}
+
+function formatFallRate(jumps, falls) {
+  return jumps > 0 ? `${((falls / jumps) * 100).toFixed(1)}%` : "-";
+}
+
 function availableYears() {
   return Array.from(new Set(samples.map(row => row.date.getFullYear()))).sort();
+}
+
+function nextFrame() {
+  return new Promise(resolve => requestAnimationFrame(resolve));
 }
 
 function renderYear(year) {
   selectedYear = year;
   document.getElementById("yearLabel").textContent = year;
+  document.getElementById("recapTitle").textContent = `Jump King Recap ${year}`;
 
   const deltas = buildDeltas(samples).filter(row => row.year === year);
   const hourlyMap = new Map();
@@ -427,10 +564,10 @@ function renderYear(year) {
   const activeDates = new Set();
 
   for (const row of deltas) {
-    addToMap(hourlyMap, `${row.weekday}-${row.hour}`, row.frames, row.jumps, row.falls);
-    addToMap(monthlyMap, row.month, row.frames, row.jumps, row.falls);
-    addToMap(dailyMap, row.localDate, row.frames, row.jumps, row.falls);
-    addToMap(weekdayMap, row.weekday, row.frames, row.jumps, row.falls);
+    addToMap(hourlyMap, `${row.weekday}-${row.hour}`, row.frames, row.jumps, row.falls, row.idleFrames);
+    addToMap(monthlyMap, row.month, row.frames, row.jumps, row.falls, row.idleFrames);
+    addToMap(dailyMap, row.localDate, row.frames, row.jumps, row.falls, row.idleFrames);
+    addToMap(weekdayMap, row.weekday, row.frames, row.jumps, row.falls, row.idleFrames);
 
     if (row.jumps > 0) {
       activeDates.add(row.localDate);
@@ -445,6 +582,8 @@ function renderYear(year) {
 function renderSummary(deltas, hourlyMap, monthlyMap, dailyMap, weekdayMap, activeDates) {
   const totalJumps = deltas.reduce((sum, row) => sum + row.jumps, 0);
   const totalFalls = deltas.reduce((sum, row) => sum + row.falls, 0);
+  const totalFrames = deltas.reduce((sum, row) => sum + row.frames, 0);
+  const idleFrames = deltas.reduce((sum, row) => sum + row.idleFrames, 0);
   const streaks = calculateStreaks(activeDates);
   let bestHour = "-";
   let bestHourJumps = 0;
@@ -454,6 +593,7 @@ function renderSummary(deltas, hourlyMap, monthlyMap, dailyMap, weekdayMap, acti
   let bestMonthJumps = 0;
   let bestWeekday = "-";
   let bestWeekdayJumps = 0;
+  const fallRate = formatFallRate(totalJumps, totalFalls);
 
   for (const [key, value] of hourlyMap.entries()) {
     if (value.jumps > bestHourJumps) {
@@ -466,35 +606,41 @@ function renderSummary(deltas, hourlyMap, monthlyMap, dailyMap, weekdayMap, acti
   for (const [key, value] of dailyMap.entries()) {
     if (value.jumps > bestDayJumps) {
       bestDayJumps = value.jumps;
-      bestDay = `${key} / ${formatNumber(value.jumps)}`;
+      bestDay = key;
     }
   }
 
   for (const [key, value] of monthlyMap.entries()) {
     if (value.jumps > bestMonthJumps) {
       bestMonthJumps = value.jumps;
-      bestMonth = `${months[Number(key) - 1]} / ${formatNumber(value.jumps)}`;
+      bestMonth = months[Number(key) - 1];
     }
   }
 
   for (const [key, value] of weekdayMap.entries()) {
     if (value.jumps > bestWeekdayJumps) {
       bestWeekdayJumps = value.jumps;
-      bestWeekday = `${weekdays[Number(key)]} / ${formatNumber(value.jumps)}`;
+      bestWeekday = weekdays[Number(key)];
     }
   }
 
-  document.getElementById("totalJumps").textContent = formatNumber(totalJumps);
-  document.getElementById("totalFalls").textContent = formatNumber(totalFalls);
-  document.getElementById("activeDays").textContent = formatNumber(activeDates.size);
-  document.getElementById("longestStreak").textContent = `${formatNumber(streaks.longest)} days`;
-  document.getElementById("currentStreak").textContent = `${formatNumber(streaks.current)} days`;
-  document.getElementById("bestDay").textContent = bestDay;
-  document.getElementById("bestMonth").textContent = bestMonth;
-  document.getElementById("bestWeekday").textContent = bestWeekday;
-  document.getElementById("bestHour").textContent = bestHour;
-  document.getElementById("averageActiveDay").textContent =
-    activeDates.size > 0 ? formatNumber(totalJumps / activeDates.size) : "-";
+  const playTime = formatFrames(totalFrames);
+  const idleTime = formatFrames(idleFrames);
+  const averageActiveDay = activeDates.size > 0 ? formatNumber(totalJumps / activeDates.size) : "-";
+
+  setMetric("totalJumps", formatNumber(totalJumps));
+  setMetric("totalFalls", formatNumber(totalFalls));
+  setMetric("fallRate", fallRate);
+  setMetric("playTime", playTime);
+  setMetric("idleTime", idleTime);
+  setMetric("activeDays", formatNumber(activeDates.size));
+  setMetric("longestStreak", `${formatNumber(streaks.longest)} days`);
+  setMetric("currentStreak", `${formatNumber(streaks.current)} days`);
+  setMetric("bestDay", bestDay, bestDay === "-" ? "" : `${formatNumber(bestDayJumps)} jumps`);
+  setMetric("bestMonth", bestMonth, bestMonth === "-" ? "" : `${formatNumber(bestMonthJumps)} jumps`);
+  setMetric("bestWeekday", bestWeekday, bestWeekday === "-" ? "" : `${formatNumber(bestWeekdayJumps)} jumps`);
+  setMetric("bestHour", bestHour);
+  setMetric("averageActiveDay", activeDates.size > 0 ? `${averageActiveDay} jumps` : "-");
 }
 
 function renderHourly(hourlyMap) {
@@ -519,13 +665,18 @@ function renderHourly(hourlyMap) {
 
     for (let hour = 0; hour < 24; hour++) {
       const key = `${weekday}-${hour}`;
-      const data = hourlyMap.get(key) || { frames: 0, jumps: 0, falls: 0 };
+      const data = hourlyMap.get(key) || { frames: 0, jumps: 0, falls: 0, idleFrames: 0 };
       const cell = document.createElement("div");
       const lv = level(data.jumps, maxJumps);
 
       cell.className = "hour-cell";
       cell.style.background = colors[lv];
-      cell.title = `${weekdays[weekday]} ${String(hour).padStart(2, "0")}:00 / ${formatNumber(data.jumps)} jumps / ${formatFrames(data.frames)}`;
+      cell.title =
+        `${weekdays[weekday]} ${String(hour).padStart(2, "0")}:00\n` +
+        `Jumps: ${formatNumber(data.jumps)}\n` +
+        `Falls: ${formatNumber(data.falls)}\n` +
+        `Play time: ${formatFrames(data.frames)}\n` +
+        `Idle time: ${formatFrames(data.idleFrames)}`;
       root.appendChild(cell);
     }
   }
@@ -540,24 +691,49 @@ function renderMonthly(monthlyMap) {
   root.innerHTML = "";
 
   const maxJumps = Math.max(0, ...Array.from(monthlyMap.values()).map(value => value.jumps));
+  const header = document.createElement("div");
+  const headerLabel = document.createElement("div");
+  const headerTrack = document.createElement("div");
+  const headerValue = document.createElement("div");
+
+  header.className = "month-row month-header";
+  headerValue.className = "value";
+  headerValue.innerHTML =
+    `<span class="value-item">Jumps</span>` +
+    `<span class="value-item">Falls</span>` +
+    `<span class="value-item">Play time</span>` +
+    `<span class="value-item">Idle time</span>`;
+  header.appendChild(headerLabel);
+  header.appendChild(headerTrack);
+  header.appendChild(headerValue);
+  root.appendChild(header);
 
   for (let month = 1; month <= 12; month++) {
-    const data = monthlyMap.get(month) || { frames: 0, jumps: 0, falls: 0 };
+    const data = monthlyMap.get(month) || { frames: 0, jumps: 0, falls: 0, idleFrames: 0 };
     const row = document.createElement("div");
     const label = document.createElement("div");
     const track = document.createElement("div");
     const bar = document.createElement("div");
+    const fallBar = document.createElement("div");
     const value = document.createElement("div");
 
     row.className = "month-row";
     label.textContent = months[month - 1];
     track.className = "bar-track";
     bar.className = "bar";
-    bar.style.width = maxJumps > 0 ? `${Math.max(2, data.jumps / maxJumps * 100)}%` : "0";
+    bar.style.width = maxJumps > 0 && data.jumps > 0 ? `${Math.max(2, data.jumps / maxJumps * 100)}%` : "0";
+    bar.style.background = "#28a745";
+    fallBar.className = "fall-bar";
+    fallBar.style.width = maxJumps > 0 && data.falls > 0 ? `${Math.max(2, data.falls / maxJumps * 100)}%` : "0";
     value.className = "value";
-    value.textContent = `${formatNumber(data.jumps)} jumps / ${formatNumber(data.falls)} falls`;
+    value.innerHTML =
+      `<span class="value-item value-number">${formatNumber(data.jumps)}</span>` +
+      `<span class="value-item value-number">${formatNumber(data.falls)}</span>` +
+      `<span class="value-item value-number">${formatFrames(data.frames)}</span>` +
+      `<span class="value-item value-number">${formatFrames(data.idleFrames)}</span>`;
 
     track.appendChild(bar);
+    track.appendChild(fallBar);
     row.appendChild(label);
     row.appendChild(track);
     row.appendChild(value);
@@ -577,19 +753,85 @@ function moveYear(offset) {
   renderYear(years[nextIndex]);
 }
 
-function loadText(text, label) {
+async function loadText(text, label) {
+  setStatus(`${label}: loading...`, "loading");
+  await nextFrame();
+
   samples = parseTsv(text);
   const years = availableYears();
 
-  document.getElementById("status").textContent = `${label}: ${formatNumber(samples.length)} samples loaded`;
+  setStatus(`${label}: ${formatNumber(samples.length)} samples loaded`, "");
 
   if (years.length === 0) {
-    document.getElementById("status").textContent = `${label}: no valid samples found`;
+    setStatus(`${label}: no valid samples found`, "error");
     return;
   }
 
   renderYear(years[0]);
 }
+
+function setSelectedFile(file, handle) {
+  selectedFile = file;
+  selectedFileHandle = handle || null;
+  document.getElementById("reloadFile").disabled = false;
+  loadFile(file);
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  setStatus(`${file.name}: reading...`, "loading");
+  reader.onload = () => {
+    loadText(String(reader.result || ""), file.name).catch(error => {
+      setStatus(`${file.name}: failed to load (${error.message})`, "error");
+    });
+  };
+  reader.readAsText(file, "utf-8");
+}
+
+async function openFile() {
+  if (window.showOpenFilePicker) {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{
+        description: "TSV files",
+        accept: {
+          "text/tab-separated-values": [".tsv"],
+          "text/plain": [".tsv", ".txt"]
+        }
+      }],
+      excludeAcceptAllOption: false,
+      multiple: false
+    });
+
+    setSelectedFile(await handle.getFile(), handle);
+    return;
+  }
+
+  document.getElementById("fileInput").click();
+}
+
+async function reloadFile() {
+  if (!selectedFile) {
+    setStatus("Choose total_stats.tsv before reloading.", "error");
+    return;
+  }
+
+  if (selectedFileHandle) {
+    setSelectedFile(await selectedFileHandle.getFile(), selectedFileHandle);
+    return;
+  }
+
+  setStatus("Select the TSV again to reload updated data.", "loading");
+  document.getElementById("fileInput").value = "";
+  document.getElementById("fileInput").click();
+}
+
+document.getElementById("openFile").addEventListener("click", () => {
+  openFile().catch(error => {
+    if (error.name !== "AbortError") {
+      setStatus(`Failed to open TSV: ${error.message}`, "error");
+    }
+  });
+});
 
 document.getElementById("fileInput").addEventListener("change", event => {
   const file = event.target.files[0];
@@ -598,9 +840,15 @@ document.getElementById("fileInput").addEventListener("change", event => {
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = () => loadText(String(reader.result || ""), file.name);
-  reader.readAsText(file, "utf-8");
+  setSelectedFile(file, null);
+});
+
+document.getElementById("reloadFile").addEventListener("click", () => {
+  reloadFile().catch(error => {
+    if (error.name !== "AbortError") {
+      setStatus(`Failed to reload TSV: ${error.message}`, "error");
+    }
+  });
 });
 
 document.getElementById("prevYear").addEventListener("click", () => moveYear(-1));
