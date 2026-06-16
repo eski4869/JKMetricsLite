@@ -314,6 +314,7 @@ namespace JKMetricsLite
         private int _lastTimelineAppendFrames = -1;
         private string _lastArea = "Unknown";
         private bool _screenOrderDirty = false;
+        private bool _levelStateInitialized = false;
 
         // PB is based on first-reached area order + first-reached screen order inside that area.
         private string _pbArea = "";
@@ -406,7 +407,19 @@ namespace JKMetricsLite
             _screenOrderPath = preparation.ScreenOrderPath;
             _currentProgressPath = preparation.CurrentProgressPath;
             _totalStatsPath = preparation.TotalStatsPath;
+            _locations = new Location[0];
+            _levelStateInitialized = false;
+            ResetStats();
+        }
+
+        private bool TryInitializeLevelState()
+        {
             _locations = LoadLocations();
+
+            if (_locations == null || _locations.Length == 0)
+            {
+                return false;
+            }
 
             AppendTotalStatsTsv();
 
@@ -427,6 +440,8 @@ namespace JKMetricsLite
 
             WriteOutputFiles(false);
             WriteScreenOrderTsv(!loaded);
+            _levelStateInitialized = true;
+            return true;
         }
 
         private static void WriteDefaultConfigFileIfMissing(string assemblyDir)
@@ -553,7 +568,7 @@ namespace JKMetricsLite
 
         private static void FlushCurrentInstance(bool appendTimeline, bool appendActivity)
         {
-            if (_instance == null)
+            if (_instance == null || !_instance._levelStateInitialized)
             {
                 return;
             }
@@ -576,7 +591,10 @@ namespace JKMetricsLite
 
             if (_locations == null || _locations.Length == 0)
             {
-                _locations = LoadLocations();
+                if (!TryInitializeLevelState())
+                {
+                    return;
+                }
             }
 
             int screen = JumpKing.Camera.CurrentScreen + 1;
