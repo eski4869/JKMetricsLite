@@ -52,6 +52,7 @@ namespace JKMetricsLite
                 return;
             }
 
+            ScreenStayStatsBehaviour.PrepareForLevelLoad();
             RegisterMetricsBehaviour();
         }
 
@@ -69,6 +70,7 @@ namespace JKMetricsLite
             if (existingBehaviour != null)
             {
                 _registeredBehaviour = existingBehaviour;
+                _registeredBehaviour.ResetForLevelStart();
                 return;
             }
 
@@ -136,6 +138,7 @@ namespace JKMetricsLite
 
             if (isEnabled)
             {
+                ScreenStayStatsBehaviour.PrepareForLevelLoad();
                 RegisterMetricsBehaviour();
             }
             else
@@ -294,12 +297,12 @@ namespace JKMetricsLite
         private readonly Dictionary<string, List<int>> _areaScreenAppearedOrder =
             new Dictionary<string, List<int>>();
 
-        private readonly string _outputDir;
-        private readonly string _areaMetricsPath;
-        private readonly string _screenTimelinePath;
-        private readonly string _screenOrderPath;
-        private readonly string _currentProgressPath;
-        private readonly string _totalStatsPath;
+        private string _outputDir;
+        private string _areaMetricsPath;
+        private string _screenTimelinePath;
+        private string _screenOrderPath;
+        private string _currentProgressPath;
+        private string _totalStatsPath;
 
         private Location[] _locations = new Location[0];
 
@@ -388,7 +391,11 @@ namespace JKMetricsLite
         public ScreenStayStatsBehaviour()
         {
             _instance = this;
+            ResetForLevelStart();
+        }
 
+        internal void ResetForLevelStart()
+        {
             LevelLoadPreparation preparation = GetLevelLoadPreparation();
 
             _outputDir = preparation.OutputDir;
