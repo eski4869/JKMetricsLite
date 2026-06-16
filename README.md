@@ -109,7 +109,7 @@ Long-term metrics are accumulated across play sessions and are not reset with ru
 | --- | --- | --- | --- | --- |
 | Long-Term Metrics | `raw_data/total_stats.tsv` | Sample time | Total frames, jumps, and falls | Appended on mod start, about every 3600 frames, and on level end. Duplicate samples may be kept. |
 
-Open `local/recap.html` directly in a browser and select `raw_data/total_stats.tsv` to view jump-based recaps, including total jumps/falls, active days, streaks, best day/month/weekday/hour, hourly heatmaps, and monthly jumps.
+Open `local/recap.html` directly in a browser and select `raw_data/total_stats.tsv` to view jump-based recaps, including total jumps/falls, active days, streaks, best day/month/weekday/hour, hourly heatmaps, and monthly jumps/falls.
 
 The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
 

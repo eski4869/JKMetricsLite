@@ -176,7 +176,7 @@
 
     .month-row {
       display: grid;
-      grid-template-columns: 42px 1fr 150px;
+      grid-template-columns: 42px 1fr 210px;
       gap: 12px;
       align-items: center;
     }
@@ -262,7 +262,7 @@
   </section>
 
   <section>
-    <h2>Monthly Jumps</h2>
+    <h2>Monthly Jumps / Falls</h2>
     <div id="monthly" class="monthly"></div>
   </section>
 </div>
@@ -555,7 +555,7 @@ function renderMonthly(monthlyMap) {
     bar.className = "bar";
     bar.style.width = maxJumps > 0 ? `${Math.max(2, data.jumps / maxJumps * 100)}%` : "0";
     value.className = "value";
-    value.textContent = `${formatNumber(data.jumps)} jumps`;
+    value.textContent = `${formatNumber(data.jumps)} jumps / ${formatNumber(data.falls)} falls`;
 
     track.appendChild(bar);
     row.appendChild(label);
