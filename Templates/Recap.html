@@ -282,20 +282,21 @@ function parseTsv(text) {
     return [];
   }
 
-  const header = lines.shift().split("\t");
+  const header = lines.shift().split("\t").map(key => key.trim().replace(/^\uFEFF/, ""));
 
   return lines.map(line => {
     const cols = line.split("\t");
     const row = {};
 
     header.forEach((key, index) => {
-      row[key] = cols[index] || "";
+      row[key] = (cols[index] || "").trim();
     });
 
-    const date = new Date(row.sampled_at);
+    const sampledAt = row.sampled_at || row.timestamp || row.timestamp_utc || "";
+    const date = new Date(sampledAt);
 
     return {
-      sampledAt: row.sampled_at,
+      sampledAt,
       date,
       totalFrames: Number(row.total_frames),
       totalJumps: Number(row.total_jumps),
