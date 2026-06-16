@@ -6,6 +6,7 @@ using System.Text;
 using System.Xml.Serialization;
 using EntityComponent;
 using JumpKing.API;
+using JumpKing.BodyCompBehaviours;
 using JumpKing.MiscSystems.Achievements;
 using JumpKing.MiscSystems.LocationText;
 using JumpKing.Mods;
@@ -52,7 +53,6 @@ namespace JKMetricsLite
                 return;
             }
 
-            ScreenStayStatsBehaviour.PrepareForLevelLoad();
             RegisterMetricsBehaviour();
         }
 
@@ -65,21 +65,43 @@ namespace JKMetricsLite
                 return;
             }
 
-            ScreenStayStatsBehaviour existingBehaviour = player.GetComponent<ScreenStayStatsBehaviour>();
-
-            if (existingBehaviour != null)
+            if (_registeredBehaviour != null)
             {
-                _registeredBehaviour = existingBehaviour;
-                _registeredBehaviour.ResetForLevelStart();
-                return;
+                try
+                {
+                    player.m_body.RemoveBehaviour(_registeredBehaviour);
+                }
+                catch (Exception ex)
+                {
+                    ScreenStayStatsBehaviour.LogError("Remove previous behaviour", ex);
+                }
             }
 
             _registeredBehaviour = new ScreenStayStatsBehaviour();
-            player.AddComponents(new Component[] { _registeredBehaviour });
+            player.m_body.RegisterBehaviour(_registeredBehaviour);
         }
 
         private static void UnregisterMetricsBehaviour()
         {
+            if (_registeredBehaviour == null)
+            {
+                return;
+            }
+
+            PlayerEntity player = EntityManager.instance.Find<PlayerEntity>();
+
+            if (player != null)
+            {
+                try
+                {
+                    player.m_body.RemoveBehaviour(_registeredBehaviour);
+                }
+                catch (Exception ex)
+                {
+                    ScreenStayStatsBehaviour.LogError("Remove metrics behaviour", ex);
+                }
+            }
+
             _registeredBehaviour = null;
         }
 
@@ -138,7 +160,6 @@ namespace JKMetricsLite
 
             if (isEnabled)
             {
-                ScreenStayStatsBehaviour.PrepareForLevelLoad();
                 RegisterMetricsBehaviour();
             }
             else
@@ -273,7 +294,7 @@ namespace JKMetricsLite
         public bool IsEnabled { get; set; } = true;
     }
 
-    public partial class ScreenStayStatsBehaviour : Component
+    public partial class ScreenStayStatsBehaviour : IBodyCompBehaviour
     {
         private const int MinScreen = 1;
         private const int MaxScreen = 169;
@@ -297,12 +318,12 @@ namespace JKMetricsLite
         private readonly Dictionary<string, List<int>> _areaScreenAppearedOrder =
             new Dictionary<string, List<int>>();
 
-        private string _outputDir;
-        private string _areaMetricsPath;
-        private string _screenTimelinePath;
-        private string _screenOrderPath;
-        private string _currentProgressPath;
-        private string _totalStatsPath;
+        private readonly string _outputDir;
+        private readonly string _areaMetricsPath;
+        private readonly string _screenTimelinePath;
+        private readonly string _screenOrderPath;
+        private readonly string _currentProgressPath;
+        private readonly string _totalStatsPath;
 
         private Location[] _locations = new Location[0];
 
@@ -314,7 +335,6 @@ namespace JKMetricsLite
         private int _lastTimelineAppendFrames = -1;
         private string _lastArea = "Unknown";
         private bool _screenOrderDirty = false;
-        private bool _levelStateInitialized = false;
 
         // PB is based on first-reached area order + first-reached screen order inside that area.
         private string _pbArea = "";
@@ -392,11 +412,7 @@ namespace JKMetricsLite
         public ScreenStayStatsBehaviour()
         {
             _instance = this;
-            ResetForLevelStart();
-        }
 
-        internal void ResetForLevelStart()
-        {
             LevelLoadPreparation preparation = GetLevelLoadPreparation();
 
             _outputDir = preparation.OutputDir;
@@ -407,19 +423,7 @@ namespace JKMetricsLite
             _screenOrderPath = preparation.ScreenOrderPath;
             _currentProgressPath = preparation.CurrentProgressPath;
             _totalStatsPath = preparation.TotalStatsPath;
-            _locations = new Location[0];
-            _levelStateInitialized = false;
-            ResetStats();
-        }
-
-        private bool TryInitializeLevelState()
-        {
             _locations = LoadLocations();
-
-            if (_locations == null || _locations.Length == 0)
-            {
-                return false;
-            }
 
             AppendTotalStatsTsv();
 
@@ -440,8 +444,6 @@ namespace JKMetricsLite
 
             WriteOutputFiles(false);
             WriteScreenOrderTsv(!loaded);
-            _levelStateInitialized = true;
-            return true;
         }
 
         private static void WriteDefaultConfigFileIfMissing(string assemblyDir)
@@ -568,7 +570,7 @@ namespace JKMetricsLite
 
         private static void FlushCurrentInstance(bool appendTimeline, bool appendActivity)
         {
-            if (_instance == null || !_instance._levelStateInitialized)
+            if (_instance == null)
             {
                 return;
             }
@@ -582,19 +584,11 @@ namespace JKMetricsLite
             }
         }
 
-        protected override void Update(float p_delta)
+        public bool ExecuteBehaviour(BehaviourContext behaviourContext)
         {
-            if (!JKMetricsLiteMod.IsMetricsEnabled())
-            {
-                return;
-            }
-
             if (_locations == null || _locations.Length == 0)
             {
-                if (!TryInitializeLevelState())
-                {
-                    return;
-                }
+                _locations = LoadLocations();
             }
 
             int screen = JumpKing.Camera.CurrentScreen + 1;
@@ -655,6 +649,8 @@ namespace JKMetricsLite
                 _totalStatsCounter = 0;
                 AppendTotalStatsTsv();
             }
+
+            return true;
         }
 
         private void WriteOutputFiles(bool appendTimeline)

@@ -12,7 +12,7 @@ namespace JKMetricsLite
     {
         internal static bool IsCurrentAreaExcludedFromMetrics()
         {
-            if (_instance == null || !_instance._levelStateInitialized)
+            if (_instance == null)
             {
                 return false;
             }
@@ -23,7 +23,6 @@ namespace JKMetricsLite
         internal static bool CanChangeCurrentAreaMetricsExclusion()
         {
             return _instance != null &&
-                _instance._levelStateInitialized &&
                 !string.IsNullOrEmpty(_instance._lastArea) &&
                 _instance._lastArea != "Unknown";
         }
