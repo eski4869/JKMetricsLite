@@ -292,7 +292,7 @@ function parseTsv(text) {
       row[key] = (cols[index] || "").trim();
     });
 
-    const sampledAt = row.sampled_at || row.timestamp || row.timestamp_utc || "";
+    const sampledAt = row.sampled_at;
     const date = new Date(sampledAt);
 
     return {
