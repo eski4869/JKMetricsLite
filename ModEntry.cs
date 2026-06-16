@@ -6,7 +6,6 @@ using System.Text;
 using System.Xml.Serialization;
 using EntityComponent;
 using JumpKing.API;
-using JumpKing.BodyCompBehaviours;
 using JumpKing.MiscSystems.Achievements;
 using JumpKing.MiscSystems.LocationText;
 using JumpKing.Mods;
@@ -65,43 +64,21 @@ namespace JKMetricsLite
                 return;
             }
 
-            if (_registeredBehaviour != null)
+            ScreenStayStatsBehaviour existingBehaviour = player.GetComponent<ScreenStayStatsBehaviour>();
+
+            if (existingBehaviour != null)
             {
-                try
-                {
-                    player.m_body.RemoveBehaviour(_registeredBehaviour);
-                }
-                catch (Exception ex)
-                {
-                    ScreenStayStatsBehaviour.LogError("Remove previous behaviour", ex);
-                }
+                _registeredBehaviour = existingBehaviour;
+                _registeredBehaviour.InitializeForLevelStart();
+                return;
             }
 
             _registeredBehaviour = new ScreenStayStatsBehaviour();
-            player.m_body.RegisterBehaviour(_registeredBehaviour);
+            player.AddComponents(new Component[] { _registeredBehaviour });
         }
 
         private static void UnregisterMetricsBehaviour()
         {
-            if (_registeredBehaviour == null)
-            {
-                return;
-            }
-
-            PlayerEntity player = EntityManager.instance.Find<PlayerEntity>();
-
-            if (player != null)
-            {
-                try
-                {
-                    player.m_body.RemoveBehaviour(_registeredBehaviour);
-                }
-                catch (Exception ex)
-                {
-                    ScreenStayStatsBehaviour.LogError("Remove metrics behaviour", ex);
-                }
-            }
-
             _registeredBehaviour = null;
         }
 
@@ -294,7 +271,7 @@ namespace JKMetricsLite
         public bool IsEnabled { get; set; } = true;
     }
 
-    public partial class ScreenStayStatsBehaviour : IBodyCompBehaviour
+    public partial class ScreenStayStatsBehaviour : Component
     {
         private const int MinScreen = 1;
         private const int MaxScreen = 169;
@@ -318,12 +295,12 @@ namespace JKMetricsLite
         private readonly Dictionary<string, List<int>> _areaScreenAppearedOrder =
             new Dictionary<string, List<int>>();
 
-        private readonly string _outputDir;
-        private readonly string _areaMetricsPath;
-        private readonly string _screenTimelinePath;
-        private readonly string _screenOrderPath;
-        private readonly string _currentProgressPath;
-        private readonly string _totalStatsPath;
+        private string _outputDir;
+        private string _areaMetricsPath;
+        private string _screenTimelinePath;
+        private string _screenOrderPath;
+        private string _currentProgressPath;
+        private string _totalStatsPath;
 
         private Location[] _locations = new Location[0];
 
@@ -412,7 +389,11 @@ namespace JKMetricsLite
         public ScreenStayStatsBehaviour()
         {
             _instance = this;
+            InitializeForLevelStart();
+        }
 
+        internal void InitializeForLevelStart()
+        {
             LevelLoadPreparation preparation = GetLevelLoadPreparation();
 
             _outputDir = preparation.OutputDir;
@@ -584,8 +565,13 @@ namespace JKMetricsLite
             }
         }
 
-        public bool ExecuteBehaviour(BehaviourContext behaviourContext)
+        protected override void Update(float p_delta)
         {
+            if (!JKMetricsLiteMod.IsMetricsEnabled())
+            {
+                return;
+            }
+
             if (_locations == null || _locations.Length == 0)
             {
                 _locations = LoadLocations();
@@ -649,8 +635,6 @@ namespace JKMetricsLite
                 _totalStatsCounter = 0;
                 AppendTotalStatsTsv();
             }
-
-            return true;
         }
 
         private void WriteOutputFiles(bool appendTimeline)
