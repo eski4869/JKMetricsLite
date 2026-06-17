@@ -16,6 +16,8 @@
       --high: #c99a35;
       --max: #f1d27c;
       --accent: #7ab7cf;
+      --monthly-jumps: var(--mid);
+      --monthly-falls: #c45a50;
     }
 
     * {
@@ -31,7 +33,7 @@
     }
 
     .shell {
-      max-width: 1080px;
+      max-width: 960px;
       margin: 0 auto;
     }
 
@@ -60,6 +62,10 @@
     .label,
     .value {
       color: var(--muted);
+    }
+
+    .label {
+      font-size: 13px;
     }
 
     .status-loading,
@@ -136,7 +142,7 @@
     .metric strong {
       display: block;
       color: var(--text);
-      font-size: 22px;
+      font-size: 20px;
       margin-top: 4px;
       font-variant-numeric: tabular-nums;
     }
@@ -242,11 +248,11 @@
     }
 
     .monthly-swatch.jumps {
-      background: #28a745;
+      background: var(--monthly-jumps);
     }
 
     .monthly-swatch.falls {
-      background: #e74c3c;
+      background: var(--monthly-falls);
     }
 
 
@@ -268,6 +274,10 @@
       font-weight: 700;
     }
 
+    .month-label {
+      font-size: 14px;
+    }
+
     .bar-track {
       position: relative;
       height: 20px;
@@ -276,16 +286,19 @@
       overflow: hidden;
     }
 
-    .bar {
+    .activity-bar {
+      display: flex;
       height: 100%;
     }
 
-    .fall-bar {
-      position: absolute;
-      left: 0;
-      top: 0;
+    .bar {
       height: 100%;
-      background: #e74c3c;
+      background: var(--monthly-jumps);
+    }
+
+    .fall-bar {
+      height: 100%;
+      background: var(--monthly-falls);
     }
 
     .value {
@@ -300,7 +313,7 @@
     }
 
     .value-number {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
     }
 
@@ -309,7 +322,7 @@
       padding: 20px 0 6px;
     }
 
-    @media (max-width: 1080px) {
+    @media (max-width: 920px) {
       header {
         align-items: flex-start;
         flex-direction: column;
@@ -384,7 +397,7 @@
   </div>
 
   <section>
-    <h2>Hourly Jump Heatmap</h2>
+    <h2>Weekly Activity</h2>
     <div id="hourly" class="hourly"></div>
     <div class="legend">Less <span class="swatch level-0"></span><span class="swatch level-1"></span><span class="swatch level-2"></span><span class="swatch level-3"></span><span class="swatch level-4"></span> More</div>
   </section>
@@ -486,9 +499,9 @@ function dateKeyToDayNumber(key) {
   return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
 }
 
-function addToMap(map, key, frames, jumps, falls, idleFrames) {
+function addToMap(map, key, frames, jumps, falls, idleFrames, activeDate) {
   if (!map.has(key)) {
-    map.set(key, { frames: 0, jumps: 0, falls: 0, idleFrames: 0 });
+    map.set(key, { frames: 0, jumps: 0, falls: 0, idleFrames: 0, activeDates: new Set() });
   }
 
   const item = map.get(key);
@@ -496,6 +509,10 @@ function addToMap(map, key, frames, jumps, falls, idleFrames) {
   item.jumps += jumps;
   item.falls += falls;
   item.idleFrames += idleFrames;
+
+  if (activeDate && jumps > 0) {
+    item.activeDates.add(activeDate);
+  }
 }
 
 function calculateStreaks(activeDates) {
@@ -582,7 +599,7 @@ function renderYear(year) {
   const activeDates = new Set();
 
   for (const row of deltas) {
-    addToMap(hourlyMap, `${row.weekday}-${row.hour}`, row.frames, row.jumps, row.falls, row.idleFrames);
+    addToMap(hourlyMap, `${row.weekday}-${row.hour}`, row.frames, row.jumps, row.falls, row.idleFrames, row.localDate);
     addToMap(monthlyMap, row.month, row.frames, row.jumps, row.falls, row.idleFrames);
     addToMap(dailyMap, row.localDate, row.frames, row.jumps, row.falls, row.idleFrames);
     addToMap(weekdayMap, row.weekday, row.frames, row.jumps, row.falls, row.idleFrames);
@@ -680,7 +697,7 @@ function renderHourly(hourlyMap) {
 
     for (let hour = 0; hour < 24; hour++) {
       const key = `${weekday}-${hour}`;
-      const data = hourlyMap.get(key) || { frames: 0, jumps: 0, falls: 0, idleFrames: 0 };
+      const data = hourlyMap.get(key) || { frames: 0, jumps: 0, falls: 0, idleFrames: 0, activeDates: new Set() };
       const cell = document.createElement("div");
       const lv = level(data.jumps, maxJumps);
 
@@ -691,7 +708,8 @@ function renderHourly(hourlyMap) {
         `Jumps: ${formatNumber(data.jumps)}\n` +
         `Falls: ${formatNumber(data.falls)}\n` +
         `Play time: ${formatFrames(data.frames)}\n` +
-        `Idle time: ${formatFrames(data.idleFrames)}`;
+        `Idle time: ${formatFrames(data.idleFrames)}\n` +
+        `Active days: ${formatNumber(data.activeDates.size)}`;
       root.appendChild(cell);
     }
   }
@@ -710,8 +728,8 @@ function renderMonthly(monthlyMap, dailyMap) {
   header.className = "month-row month-header";
   headerValue.className = "value";
   headerValue.innerHTML =
-    `<span class="value-item">Total jumps</span>` +
-    `<span class="value-item">Total falls</span>` +
+    `<span class="value-item">Jumps</span>` +
+    `<span class="value-item">Falls</span>` +
     `<span class="value-item">Falls / jumps</span>` +
     `<span class="value-item">Play time</span>` +
     `<span class="value-item">Idle time</span>` +
@@ -727,18 +745,28 @@ function renderMonthly(monthlyMap, dailyMap) {
     const row = document.createElement("div");
     const label = document.createElement("div");
     const track = document.createElement("div");
+    const activityBar = document.createElement("div");
     const bar = document.createElement("div");
     const fallBar = document.createElement("div");
     const value = document.createElement("div");
 
     row.className = "month-row";
+    label.className = "month-label";
     label.textContent = months[month - 1];
     track.className = "bar-track";
+    activityBar.className = "activity-bar";
     bar.className = "bar";
-    bar.style.width = maxJumps > 0 && data.jumps > 0 ? `${Math.max(2, data.jumps / maxJumps * 100)}%` : "0";
-    bar.style.background = "#28a745";
     fallBar.className = "fall-bar";
-    fallBar.style.width = maxJumps > 0 && data.falls > 0 ? `${Math.min(100, data.falls * 10 / maxJumps * 100)}%` : "0";
+    const jumpPercent = maxJumps > 0 && data.jumps > 0 ? Math.max(2, data.jumps / maxJumps * 100) : 0;
+    const fallPercent = maxJumps > 0 && data.falls > 0 ? Math.min(100, data.falls * 2 / maxJumps * 100) : 0;
+    const visibleFallPercent = Math.min(jumpPercent, fallPercent);
+    const cleanJumpPercent = Math.max(0, jumpPercent - visibleFallPercent);
+    const cleanShare = jumpPercent > 0 ? cleanJumpPercent / jumpPercent * 100 : 0;
+    const fallShare = jumpPercent > 0 ? visibleFallPercent / jumpPercent * 100 : 0;
+
+    activityBar.style.width = `${jumpPercent}%`;
+    bar.style.width = `${cleanShare}%`;
+    fallBar.style.width = `${fallShare}%`;
     value.className = "value";
     for (const [dateKey, day] of dailyMap.entries()) {
       if (dateKey.slice(5, 7) === String(month).padStart(2, "0") && day.jumps > 0) {
@@ -748,8 +776,8 @@ function renderMonthly(monthlyMap, dailyMap) {
 
     row.title =
       `${months[month - 1]}\n` +
-      `Total jumps: ${formatNumber(data.jumps)}\n` +
-      `Total falls: ${formatNumber(data.falls)}\n` +
+      `Jumps: ${formatNumber(data.jumps)}\n` +
+      `Falls: ${formatNumber(data.falls)}\n` +
       `Falls / jumps: ${formatFallRate(data.jumps, data.falls)}\n` +
       `Play time: ${formatFrames(data.frames)}\n` +
       `Idle time: ${formatFrames(data.idleFrames)}\n` +
@@ -763,8 +791,9 @@ function renderMonthly(monthlyMap, dailyMap) {
       `<span class="value-item value-number">${formatFrames(data.idleFrames)}</span>` +
       `<span class="value-item value-number">${formatNumber(activeDays)}</span>`;
 
-    track.appendChild(bar);
-    track.appendChild(fallBar);
+    activityBar.appendChild(bar);
+    activityBar.appendChild(fallBar);
+    track.appendChild(activityBar);
     row.appendChild(label);
     row.appendChild(track);
     row.appendChild(value);
