@@ -99,6 +99,7 @@ namespace JKMetricsLite
             {
                 _areaScreenAppearedOrder[areaName].Add(screen);
                 _screenOrderDirty = true;
+                WriteScreenOrderTsv(false);
             }
         }
 

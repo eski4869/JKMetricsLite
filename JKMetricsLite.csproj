@@ -64,12 +64,12 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Templates\AreaNameSplit.html" />
-    <EmbeddedResource Include="Templates\AreaNumberSplit.html" />
-    <EmbeddedResource Include="Templates\AreaNameSplitSpeedrun.html" />
-    <EmbeddedResource Include="Templates\AreaNumberSplitSpeedrun.html" />
-    <EmbeddedResource Include="Templates\ScreenGraph.html" />
-    <EmbeddedResource Include="Templates\Recap.html" />
+    <EmbeddedResource Include="Templates\area_name_split.html" />
+    <EmbeddedResource Include="Templates\area_number_split.html" />
+    <EmbeddedResource Include="Templates\area_name_split_speedrun.html" />
+    <EmbeddedResource Include="Templates\area_number_split_speedrun.html" />
+    <EmbeddedResource Include="Templates\progress_graph.html" />
+    <EmbeddedResource Include="Templates\recap.html" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

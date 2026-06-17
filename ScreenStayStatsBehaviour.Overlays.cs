@@ -7,12 +7,12 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
-        private const string AreaNameSplitTemplateName = "AreaNameSplit.html";
-        private const string AreaNumberSplitTemplateName = "AreaNumberSplit.html";
-        private const string AreaNameSplitSpeedrunTemplateName = "AreaNameSplitSpeedrun.html";
-        private const string AreaNumberSplitSpeedrunTemplateName = "AreaNumberSplitSpeedrun.html";
-        private const string ScreenGraphTemplateName = "ScreenGraph.html";
-        private const string RecapTemplateName = "Recap.html";
+        private const string AreaNameSplitTemplateName = "area_name_split.html";
+        private const string AreaNumberSplitTemplateName = "area_number_split.html";
+        private const string AreaNameSplitSpeedrunTemplateName = "area_name_split_speedrun.html";
+        private const string AreaNumberSplitSpeedrunTemplateName = "area_number_split_speedrun.html";
+        private const string ScreenGraphTemplateName = "progress_graph.html";
+        private const string RecapTemplateName = "recap.html";
 
         private static void WriteOverlayHtmlIfMissing(string outputDir, string fileName, string html)
         {

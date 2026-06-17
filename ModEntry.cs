@@ -366,7 +366,7 @@ namespace JKMetricsLite
             WriteOverlayHtmlIfMissing(obsDir, "area_number_split.html", LoadOverlayTemplate(AreaNumberSplitTemplateName));
             WriteOverlayHtmlIfMissing(obsDir, "area_name_split_speedrun.html", LoadOverlayTemplate(AreaNameSplitSpeedrunTemplateName));
             WriteOverlayHtmlIfMissing(obsDir, "area_number_split_speedrun.html", LoadOverlayTemplate(AreaNumberSplitSpeedrunTemplateName));
-            WriteOverlayHtmlIfMissing(obsDir, "screen_graph.html", LoadOverlayTemplate(ScreenGraphTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "progress_graph.html", LoadOverlayTemplate(ScreenGraphTemplateName));
             WriteOverlayHtmlIfMissing(localDir, "recap.html", LoadOverlayTemplate(RecapTemplateName));
 
             _levelLoadPreparation = preparation;

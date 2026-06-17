@@ -12,7 +12,7 @@ Main features:
 [*]Tracks PB progress based on the furthest reached area/screen
 [*]Lets you exclude optional or hidden areas from displayed run metrics
 [*]Generates OBS-ready overlays for blind playthroughs, exploration, and speedruns
-[*]Provides area name, area number, speedrun-style, and real-time screen graph views
+[*]Provides area name, area number, speedrun-style, and real-time progress graph views
 [*]Saves TSV metrics that can be reviewed later or used for custom analysis
 [*]Records long-term totals for heatmaps, monthly charts, or personal recaps
 [/list]
@@ -49,7 +49,7 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 
 [list]
 [*][b]raw_data/area_metrics.tsv[/b] - Area-keyed split time, duration, and display-state data.
-[*][b]raw_data/screen_timeline.tsv[/b] - Time-keyed screen data for the real-time graph.
+[*][b]raw_data/screen_timeline.tsv[/b] - Time-keyed screen data for the real-time progress graph.
 [*][b]raw_data/screen_order.tsv[/b] - First-reached screen order for each area.
 [*][b]raw_data/current_progress.tsv[/b] - Attempt, elapsed time, current screen, and Now/PB progress.
 [/list]
@@ -66,7 +66,7 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 [*][b]obs/area_number_split.html[/b] - Shows area numbers instead of area names.
 [*][b]obs/area_name_split_speedrun.html[/b] - A compact speedrun-focused area name split table using m s ms time format.
 [*][b]obs/area_number_split_speedrun.html[/b] - A compact speedrun-focused area number split table using m s ms time format.
-[*][b]obs/screen_graph.html[/b] - Displays screen transitions as a real-time graph.
+[*][b]obs/progress_graph.html[/b] - Displays screen progress as a real-time graph.
 [/list]
 
 [hr]

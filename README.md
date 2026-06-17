@@ -11,7 +11,7 @@ Main features:
 - Tracks PB progress based on the furthest reached area/screen
 - Lets you exclude optional or hidden areas from displayed run metrics
 - Generates OBS-ready overlays for blind playthroughs, exploration, and speedruns
-- Provides area name, area number, speedrun-style, and real-time screen graph views
+- Provides area name, area number, speedrun-style, and real-time progress graph views
 - Saves TSV metrics that can be reviewed later or used for custom analysis
 - Records long-term totals for heatmaps, monthly charts, or personal recaps
 
@@ -42,7 +42,7 @@ JKMetricsLite/
 |   |-- area_number_split.html
 |   |-- area_name_split_speedrun.html
 |   |-- area_number_split_speedrun.html
-|   `-- screen_graph.html
+|   `-- progress_graph.html
 |-- local/
 |   `-- recap.html
 `-- error.log
@@ -62,7 +62,7 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 | --- | --- | --- | --- | --- |
 | Run Metrics | `raw_data/area_metrics.tsv` | Area | Split time, duration, current and excluded flags | Rewritten about every 60 frames. |
 | Run Metrics | `raw_data/screen_timeline.tsv` | Elapsed time | Screen | Appended about every 60 frames. Reset with new metrics. |
-| Run Metrics | `raw_data/screen_order.tsv` | Area | First-reached screen order | When the reached-screen order changes, checked about every 3600 frames and on exit. |
+| Run Metrics | `raw_data/screen_order.tsv` | Area | First-reached screen order | When a new screen order entry is discovered and on exit. |
 | Current State | `raw_data/current_progress.tsv` | Current attempt | Attempt, elapsed time, current screen, and Now/PB progress | Rewritten about every 60 frames. |
 
 The raw TSV files store numeric values such as milliseconds. Formatting for normal or speedrun-style display is handled by the HTML views.
@@ -96,9 +96,9 @@ A compact speedrun-focused area name split table using `m s ms` time format.
 A compact speedrun-focused area number split table using `m s ms` time format.
 
 
-`obs/screen_graph.html`
+`obs/progress_graph.html`
 
-Displays screen transitions as a real-time graph.
+Displays screen progress as a real-time graph.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/8ca9df05-ac2a-472f-b7b4-a4ae0f5e8b64" />
 
