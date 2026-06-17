@@ -24,7 +24,7 @@
 
     body {
       margin: 0;
-      padding: 24px;
+      padding: 20px;
       background: var(--bg);
       color: var(--text);
       font-family: "Segoe UI", "Meiryo", sans-serif;
@@ -39,9 +39,9 @@
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 18px;
-      padding-bottom: 16px;
-      margin-bottom: 18px;
+      gap: 14px;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
       border-bottom: 1px solid var(--line);
     }
 
@@ -52,7 +52,7 @@
     }
 
     h2 {
-      margin: 0 0 14px;
+      margin: 0 0 12px;
       font-size: 18px;
     }
 
@@ -122,15 +122,15 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
     }
 
     .metric {
       border: 1px solid var(--line);
       background: var(--panel);
-      padding: 12px;
+      padding: 10px;
     }
 
     .metric strong {
@@ -149,8 +149,8 @@
     }
 
     section {
-      padding: 16px;
-      margin-bottom: 18px;
+      padding: 14px;
+      margin-bottom: 14px;
       background: var(--panel);
       border: 1px solid var(--line);
     }
@@ -200,6 +200,26 @@
       height: 14px;
     }
 
+    .swatch.level-0 {
+      background: var(--empty);
+    }
+
+    .swatch.level-1 {
+      background: var(--low);
+    }
+
+    .swatch.level-2 {
+      background: var(--mid);
+    }
+
+    .swatch.level-3 {
+      background: var(--high);
+    }
+
+    .swatch.level-4 {
+      background: var(--max);
+    }
+
     .monthly-legend {
       display: flex;
       align-items: center;
@@ -232,13 +252,13 @@
 
     .monthly {
       display: grid;
-      gap: 10px;
+      gap: 8px;
     }
 
     .month-row {
       display: grid;
-      grid-template-columns: 42px 1fr 500px;
-      gap: 12px;
+      grid-template-columns: 38px 1fr 480px;
+      gap: 10px;
       align-items: center;
     }
 
@@ -271,7 +291,7 @@
     .value {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
-      gap: 10px;
+      gap: 8px;
       font-variant-numeric: tabular-nums;
     }
 
@@ -366,7 +386,7 @@
   <section>
     <h2>Hourly Jump Heatmap</h2>
     <div id="hourly" class="hourly"></div>
-    <div class="legend">Less <span class="swatch"></span><span class="swatch"></span><span class="swatch"></span><span class="swatch"></span><span class="swatch"></span> More</div>
+    <div class="legend">Less <span class="swatch level-0"></span><span class="swatch level-1"></span><span class="swatch level-2"></span><span class="swatch level-3"></span><span class="swatch level-4"></span> More</div>
   </section>
 
   <section>
@@ -675,10 +695,6 @@ function renderHourly(hourlyMap) {
       root.appendChild(cell);
     }
   }
-
-  document.querySelectorAll(".swatch").forEach((node, index) => {
-    node.style.background = colors[index] || colors[0];
-  });
 }
 
 function renderMonthly(monthlyMap, dailyMap) {
@@ -729,6 +745,15 @@ function renderMonthly(monthlyMap, dailyMap) {
         activeDays++;
       }
     }
+
+    row.title =
+      `${months[month - 1]}\n` +
+      `Total jumps: ${formatNumber(data.jumps)}\n` +
+      `Total falls: ${formatNumber(data.falls)}\n` +
+      `Falls / jumps: ${formatFallRate(data.jumps, data.falls)}\n` +
+      `Play time: ${formatFrames(data.frames)}\n` +
+      `Idle time: ${formatFrames(data.idleFrames)}\n` +
+      `Active days: ${formatNumber(activeDays)}`;
 
     value.innerHTML =
       `<span class="value-item value-number">${formatNumber(data.jumps)}</span>` +
