@@ -25,6 +25,12 @@
       font-weight: bold;
     }
 
+    .progress-row {
+      display: grid;
+      grid-template-columns: 4ch auto;
+      column-gap: 1ch;
+    }
+
     table {
       border-collapse: collapse;
       table-layout: fixed;
@@ -52,7 +58,7 @@
 
     th.time,
     td.time {
-      width: 12ch;
+      width: 13ch;
       white-space: pre;
     }
 
@@ -93,17 +99,17 @@
 </head>
 <body>
 <div id="progress">
-  <div id="pb">PB: -</div>
-  <div id="current">Now: -</div>
+  <div class="progress-row"><span>PB:</span><span id="pb-value">-</span></div>
+  <div class="progress-row"><span>Now:</span><span id="current-value">-</span></div>
 </div>
 <br>
 <table>
   <thead>
     <tr>
-      <th class="area">Area No.</th>
-      <th class="time">Split Time</th>
-      <th class="graph">Duration Bar</th>
-      <th class="time">Duration</th>
+      <th class="area">Area</th>
+      <th class="time">Split</th>
+      <th class="graph">Duration</th>
+      <th class="time"></th>
     </tr>
   </thead>
   <tbody id="rows">
@@ -111,8 +117,8 @@
 </table>
 
 <script>
-const areaFilePath = "../raw_data/area_metrics.tsv";
-const progressFilePath = "../raw_data/current_progress.tsv";
+const areaFilePath = "../raw_data/attempts/current/area_metrics.tsv";
+const stateFilePath = "../raw_data/attempts/current/state.tsv";
 function escapeHtml(value) {
   return value
     .replaceAll("&", "&amp;")
@@ -173,23 +179,23 @@ function formatTime(milliseconds) {
 
 async function updateProgress() {
   try {
-    const res = await fetch(progressFilePath + "?t=" + Date.now());
+    const res = await fetch(stateFilePath + "?t=" + Date.now());
     const text = await res.text();
     const row = parseRows(text)[0] || {};
     const current = formatProgress(
-      Number(row.current_area_index),
-      Number(row.current_screen_in_area)
+      Number(row.current_area_order),
+      Number(row.current_screen_order)
     );
     const pb = formatProgress(
-      Number(row.pb_area_index),
-      Number(row.pb_screen_in_area)
+      Number(row.pb_area_order),
+      Number(row.pb_screen_order)
     );
 
-    document.getElementById("current").textContent = "Now: " + current;
-    document.getElementById("pb").textContent = "PB: " + pb;
+    document.getElementById("current-value").textContent = current;
+    document.getElementById("pb-value").textContent = pb;
   } catch (e) {
-    document.getElementById("current").textContent = "Now: -";
-    document.getElementById("pb").textContent = "PB: -";
+    document.getElementById("current-value").textContent = "-";
+    document.getElementById("pb-value").textContent = "-";
   }
 }
 
@@ -209,7 +215,7 @@ async function updateAreaTable() {
     const rows = data.filter(row => row.is_excluded !== "1").map((row, index) => {
       return {
         areaIndex: index + 1,
-        splitTimeMs: row.split_time_ms === "" ? Number.NaN : Number(row.split_time_ms),
+        splitMs: row.split_ms === "" ? Number.NaN : Number(row.split_ms),
         durationMs: Number(row.duration_ms) || 0,
         isCurrent: row.is_current === "1"
       };
@@ -223,7 +229,7 @@ async function updateAreaTable() {
 
       return "<tr" + (row.isCurrent ? " class='current'" : "") + ">" +
         "<td class='area'>" + escapeHtml(areaText) + "</td>" +
-        "<td class='time'>" + escapeHtml(formatTime(row.splitTimeMs)) + "</td>" +
+        "<td class='time'>" + escapeHtml(formatTime(row.splitMs)) + "</td>" +
         "<td class='graph'><div class='duration-track'>" +
           "<div class='duration-fill' style='width:" + durationPercent.toFixed(2) + "%'></div>" +
         "</div></td>" +

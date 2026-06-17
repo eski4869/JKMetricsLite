@@ -145,6 +145,18 @@ namespace JKMetricsLite
             }
         }
 
+        internal static string GetConfiguredOutputDir()
+        {
+            EnsurePreferencesLoaded();
+            return _preferences.OutputDir ?? "";
+        }
+
+        internal static int GetAttemptBackupGenerations()
+        {
+            EnsurePreferencesLoaded();
+            return _preferences.AttemptBackupGenerations;
+        }
+
         private static void EnsurePreferencesLoaded()
         {
             if (_preferences != null)
@@ -178,7 +190,30 @@ namespace JKMetricsLite
                 _settingsDirty = true;
             }
 
+            NormalizePreferences();
+
             RegisterProcessExit();
+            SaveSettingsIfDirty();
+        }
+
+        private static void NormalizePreferences()
+        {
+            if (_preferences.OutputDir == null)
+            {
+                _preferences.OutputDir = "";
+                _settingsDirty = true;
+            }
+
+            int clampedBackupGenerations = Math.Max(
+                0,
+                Math.Min(10, _preferences.AttemptBackupGenerations)
+            );
+
+            if (_preferences.AttemptBackupGenerations != clampedBackupGenerations)
+            {
+                _preferences.AttemptBackupGenerations = clampedBackupGenerations;
+                _settingsDirty = true;
+            }
         }
 
         private static void RegisterProcessExit()
@@ -269,6 +304,8 @@ namespace JKMetricsLite
     public class MetricsPreferences
     {
         public bool IsEnabled { get; set; } = true;
+        public string OutputDir { get; set; } = "";
+        public int AttemptBackupGenerations { get; set; } = 1;
     }
 
     public partial class ScreenStayStatsBehaviour : Component
@@ -279,8 +316,6 @@ namespace JKMetricsLite
         private const int ScreenOrderSaveIntervalFrames = 3600;
         private const int TotalStatsIntervalFrames = 3600;
         private const string OutputFolderName = "JKMetricsLite";
-        private const string ConfigFileName = "JKMetricsLite.env";
-        private const string OutputDirKey = "OUTPUT_DIR";
 
         private static ScreenStayStatsBehaviour _instance;
         private static bool _processExitRegistered = false;
@@ -297,10 +332,13 @@ namespace JKMetricsLite
 
         private string _outputDir;
         private string _areaMetricsPath;
-        private string _screenTimelinePath;
+        private string _screenTransitionsPath;
         private string _screenOrderPath;
-        private string _currentProgressPath;
+        private string _statePath;
         private string _totalStatsPath;
+        private string _attemptsDir;
+        private string _currentAttemptDir;
+        private int _attemptBackupGenerations = 1;
 
         private Location[] _locations = new Location[0];
 
@@ -309,7 +347,7 @@ namespace JKMetricsLite
         private int _screenOrderSaveCounter = 0;
         private int _totalStatsCounter = 0;
         private int _lastScreen = -1;
-        private int _lastTimelineAppendFrames = -1;
+        private int _lastTransitionScreen = -1;
         private string _lastArea = "Unknown";
         private bool _screenOrderDirty = false;
 
@@ -324,11 +362,14 @@ namespace JKMetricsLite
         private sealed class LevelLoadPreparation
         {
             public string OutputDir;
+            public string AttemptsDir;
+            public string CurrentAttemptDir;
             public string AreaMetricsPath;
-            public string ScreenTimelinePath;
+            public string ScreenTransitionsPath;
             public string ScreenOrderPath;
-            public string CurrentProgressPath;
+            public string StatePath;
             public string TotalStatsPath;
+            public int AttemptBackupGenerations;
         }
 
         private static LevelLoadPreparation _levelLoadPreparation;
@@ -339,15 +380,20 @@ namespace JKMetricsLite
 
             string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-            WriteDefaultConfigFileIfMissing(assemblyDir);
-
-            string outputDir = ResolveOutputDir(assemblyDir);
+            string outputDir = ResolveOutputDir(
+                assemblyDir,
+                JKMetricsLiteMod.GetConfiguredOutputDir()
+            );
             string rawDataDir = Path.Combine(outputDir, "raw_data");
+            string attemptsDir = Path.Combine(rawDataDir, "attempts");
+            string currentAttemptDir = Path.Combine(attemptsDir, "current");
             string obsDir = Path.Combine(outputDir, "obs");
             string localDir = Path.Combine(outputDir, "local");
 
             Directory.CreateDirectory(outputDir);
             Directory.CreateDirectory(rawDataDir);
+            Directory.CreateDirectory(attemptsDir);
+            Directory.CreateDirectory(currentAttemptDir);
             Directory.CreateDirectory(obsDir);
             Directory.CreateDirectory(localDir);
             SetLogOutputDir(outputDir);
@@ -355,11 +401,14 @@ namespace JKMetricsLite
             var preparation = new LevelLoadPreparation
             {
                 OutputDir = outputDir,
-                AreaMetricsPath = Path.Combine(rawDataDir, "area_metrics.tsv"),
-                ScreenTimelinePath = Path.Combine(rawDataDir, "screen_timeline.tsv"),
-                ScreenOrderPath = Path.Combine(rawDataDir, "screen_order.tsv"),
-                CurrentProgressPath = Path.Combine(rawDataDir, "current_progress.tsv"),
-                TotalStatsPath = Path.Combine(rawDataDir, "total_stats.tsv")
+                AttemptsDir = attemptsDir,
+                CurrentAttemptDir = currentAttemptDir,
+                AreaMetricsPath = Path.Combine(currentAttemptDir, "area_metrics.tsv"),
+                ScreenTransitionsPath = Path.Combine(currentAttemptDir, "screen_transitions.tsv"),
+                ScreenOrderPath = Path.Combine(currentAttemptDir, "screen_order.tsv"),
+                StatePath = Path.Combine(currentAttemptDir, "state.tsv"),
+                TotalStatsPath = Path.Combine(rawDataDir, "total_stats.tsv"),
+                AttemptBackupGenerations = JKMetricsLiteMod.GetAttemptBackupGenerations()
             };
 
             WriteOverlayHtmlIfMissing(obsDir, "area_name_split.html", LoadOverlayTemplate(AreaNameSplitTemplateName));
@@ -400,11 +449,14 @@ namespace JKMetricsLite
             _outputDir = preparation.OutputDir;
             SetLogOutputDir(_outputDir);
 
+            _attemptsDir = preparation.AttemptsDir;
+            _currentAttemptDir = preparation.CurrentAttemptDir;
             _areaMetricsPath = preparation.AreaMetricsPath;
-            _screenTimelinePath = preparation.ScreenTimelinePath;
+            _screenTransitionsPath = preparation.ScreenTransitionsPath;
             _screenOrderPath = preparation.ScreenOrderPath;
-            _currentProgressPath = preparation.CurrentProgressPath;
+            _statePath = preparation.StatePath;
             _totalStatsPath = preparation.TotalStatsPath;
+            _attemptBackupGenerations = preparation.AttemptBackupGenerations;
             _locations = LoadLocations();
 
             AppendTotalStatsTsv();
@@ -419,99 +471,131 @@ namespace JKMetricsLite
             }
             else
             {
+                BackupCurrentAttemptIfNeeded(ReadSavedAttempt());
                 ResetStats();
                 _attempt = currentAttempt;
-                ResetTimelineFile();
+                ResetScreenTransitionsFile();
             }
 
-            WriteOutputFiles(false);
+            WriteOutputFiles();
             WriteScreenOrderTsv(!loaded);
         }
 
-        private static void WriteDefaultConfigFileIfMissing(string assemblyDir)
-        {
-            try
-            {
-                string configPath = Path.Combine(assemblyDir, ConfigFileName);
-
-                if (File.Exists(configPath))
-                {
-                    return;
-                }
-
-                string content =
-                    "# JK Metrics Lite config" + Environment.NewLine +
-                    "# Leave OUTPUT_DIR empty to use the default JKMetricsLite folder in the same folder as this mod." + Environment.NewLine +
-                    "# Relative paths are based on this mod's folder. Absolute paths are also supported." + Environment.NewLine +
-                    "OUTPUT_DIR=" + Environment.NewLine;
-
-                File.WriteAllText(configPath, content, Encoding.UTF8);
-            }
-            catch (Exception ex)
-            {
-                LogError("Write default config", ex);
-            }
-        }
-
-        private static string ResolveOutputDir(string assemblyDir)
+        private static string ResolveOutputDir(string assemblyDir, string configuredOutputDir)
         {
             string defaultOutputDir = Path.Combine(assemblyDir, OutputFolderName);
 
             try
             {
-                string configPath = Path.Combine(assemblyDir, ConfigFileName);
-
-                if (!File.Exists(configPath))
+                if (string.IsNullOrWhiteSpace(configuredOutputDir))
                 {
                     return defaultOutputDir;
                 }
 
-                foreach (string line in File.ReadAllLines(configPath, Encoding.UTF8))
+                string value = Environment.ExpandEnvironmentVariables(
+                    configuredOutputDir.Trim().Trim('"')
+                );
+
+                string outputDir = Path.IsPathRooted(value)
+                    ? Path.GetFullPath(value)
+                    : Path.GetFullPath(Path.Combine(assemblyDir, value));
+
+                Directory.CreateDirectory(outputDir);
+                return outputDir;
+            }
+            catch (Exception ex)
+            {
+                LogError("Resolve output directory", ex);
+            }
+
+            return defaultOutputDir;
+        }
+
+        private void BackupCurrentAttemptIfNeeded(int? savedAttempt)
+        {
+            try
+            {
+                PruneAttemptBackups();
+
+                if (!savedAttempt.HasValue ||
+                    savedAttempt.Value < 0 ||
+                    _attemptBackupGenerations <= 0 ||
+                    string.IsNullOrEmpty(_attemptsDir) ||
+                    string.IsNullOrEmpty(_currentAttemptDir) ||
+                    !Directory.Exists(_currentAttemptDir))
                 {
-                    string trimmedLine = line.Trim();
+                    return;
+                }
 
-                    if (trimmedLine.Length == 0 || trimmedLine.StartsWith("#"))
+                string[] files = Directory.GetFiles(_currentAttemptDir, "*.tsv");
+
+                if (files.Length == 0)
+                {
+                    return;
+                }
+
+                string backupDir = Path.Combine(_attemptsDir, savedAttempt.Value.ToString());
+
+                if (Directory.Exists(backupDir))
+                {
+                    Directory.Delete(backupDir, true);
+                }
+
+                Directory.CreateDirectory(backupDir);
+
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string destinationPath = Path.Combine(
+                        backupDir,
+                        Path.GetFileName(files[i])
+                    );
+
+                    File.Copy(files[i], destinationPath, true);
+                }
+
+                PruneAttemptBackups();
+            }
+            catch (Exception ex)
+            {
+                LogError("Backup current attempt", ex);
+            }
+        }
+
+        private void PruneAttemptBackups()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_attemptsDir) ||
+                    !Directory.Exists(_attemptsDir))
+                {
+                    return;
+                }
+
+                var backups = new List<KeyValuePair<int, string>>();
+                string[] directories = Directory.GetDirectories(_attemptsDir);
+
+                for (int i = 0; i < directories.Length; i++)
+                {
+                    string name = Path.GetFileName(directories[i]);
+                    int attempt;
+
+                    if (int.TryParse(name, out attempt))
                     {
-                        continue;
+                        backups.Add(new KeyValuePair<int, string>(attempt, directories[i]));
                     }
+                }
 
-                    int separatorIndex = trimmedLine.IndexOf('=');
+                backups.Sort((left, right) => right.Key.CompareTo(left.Key));
 
-                    if (separatorIndex < 0)
-                    {
-                        continue;
-                    }
-
-                    string key = trimmedLine.Substring(0, separatorIndex).Trim();
-
-                    if (!string.Equals(key, OutputDirKey, StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    string value = trimmedLine.Substring(separatorIndex + 1).Trim().Trim('"');
-
-                    if (value.Length == 0)
-                    {
-                        return defaultOutputDir;
-                    }
-
-                    value = Environment.ExpandEnvironmentVariables(value);
-
-                    string configuredOutputDir = Path.IsPathRooted(value)
-                        ? Path.GetFullPath(value)
-                        : Path.GetFullPath(Path.Combine(assemblyDir, value));
-
-                    Directory.CreateDirectory(configuredOutputDir);
-                    return configuredOutputDir;
+                for (int i = _attemptBackupGenerations; i < backups.Count; i++)
+                {
+                    Directory.Delete(backups[i].Value, true);
                 }
             }
             catch (Exception ex)
             {
-                LogError("Read config", ex);
+                LogError("Prune attempt backups", ex);
             }
-
-            return defaultOutputDir;
         }
 
         private static void RegisterProcessExitHandler()
@@ -537,27 +621,27 @@ namespace JKMetricsLite
                 return;
             }
 
-            FlushCurrentInstance(true, false);
+            FlushCurrentInstance(false);
         }
 
         public static void FlushOnLevelEnd()
         {
-            FlushCurrentInstance(true, true);
+            FlushCurrentInstance(true);
         }
 
         public static void FlushOnLevelUnload()
         {
-            FlushCurrentInstance(false, false);
+            FlushCurrentInstance(false);
         }
 
-        private static void FlushCurrentInstance(bool appendTimeline, bool appendActivity)
+        private static void FlushCurrentInstance(bool appendActivity)
         {
             if (_instance == null)
             {
                 return;
             }
 
-            _instance.WriteOutputFiles(appendTimeline);
+            _instance.WriteOutputFiles();
             _instance.WriteScreenOrderTsv(false);
 
             if (appendActivity)
@@ -582,6 +666,7 @@ namespace JKMetricsLite
 
             if (screen >= MinScreen && screen <= MaxScreen)
             {
+                bool screenChanged = screen != _lastScreen;
                 _lastScreen = screen;
 
                 string areaName = GetAreaNameForScreen(screen);
@@ -610,6 +695,11 @@ namespace JKMetricsLite
 
                     _areaFrames[areaName]++;
                 }
+
+                if (screenChanged)
+                {
+                    AppendScreenTransitionTsv();
+                }
             }
 
             _totalFrames++;
@@ -618,7 +708,7 @@ namespace JKMetricsLite
             if (_outputCounter >= OutputIntervalFrames)
             {
                 _outputCounter = 0;
-                WriteOutputFiles(true);
+                WriteOutputFiles();
             }
 
             _screenOrderSaveCounter++;
@@ -638,16 +728,11 @@ namespace JKMetricsLite
             }
         }
 
-        private void WriteOutputFiles(bool appendTimeline)
+        private void WriteOutputFiles()
         {
             WriteAreaMetricsTsv();
-            WriteCurrentProgressTsv();
-
-            if (appendTimeline)
-            {
-                AppendScreenTimelineTsv();
-            }
-          }
+            WriteStateTsv();
+        }
     }
 }
 

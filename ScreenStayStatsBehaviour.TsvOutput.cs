@@ -11,23 +11,23 @@ namespace JKMetricsLite
         {
             var sb = new StringBuilder();
             sb.AppendLine(
-                "area_name\tsplit_time_ms\tduration_ms\tis_current\tis_excluded"
+                "area_name\tsplit_ms\tduration_ms\tis_current\tis_excluded"
             );
 
             foreach (string area in GetRawAreaFramesInAppearedOrder())
             {
                 int frames = _areaFrames[area];
-                string splitTimeMilliseconds = "";
+                string firstReachedMilliseconds = "";
 
                 if (_areaFirstReachedMilliseconds.ContainsKey(area))
                 {
-                    splitTimeMilliseconds =
+                    firstReachedMilliseconds =
                         _areaFirstReachedMilliseconds[area].ToString();
                 }
 
                 sb.AppendLine(
                     EscapeTsv(area) + "\t" +
-                    splitTimeMilliseconds + "\t" +
+                    firstReachedMilliseconds + "\t" +
                     FramesToMilliseconds(frames) + "\t" +
                     (area == _lastArea ? "1" : "0") + "\t" +
                     (_excludedAreas.Contains(area) ? "1" : "0")
@@ -80,35 +80,34 @@ namespace JKMetricsLite
             return map;
         }
 
-        private void WriteCurrentProgressTsv()
+        private void WriteStateTsv()
         {
             try
             {
-                int currentAreaIndex;
-                int currentScreenInArea;
-                GetCurrentProgress(out currentAreaIndex, out currentScreenInArea);
+                int currentAreaOrder;
+                int currentScreenOrder;
+                GetCurrentProgress(out currentAreaOrder, out currentScreenOrder);
 
                 var sb = new StringBuilder();
                 sb.AppendLine(
-                    "attempt\telapsed_ms\tcurrent_screen\t" +
-                    "current_area_index\tcurrent_screen_in_area\t" +
-                    "pb_area_index\tpb_screen_in_area"
+                    "attempt\telapsed_ms\t" +
+                    "current_area_order\tcurrent_screen_order\t" +
+                    "pb_area_order\tpb_screen_order"
                 );
                 sb.AppendLine(
                     (_attempt.HasValue ? _attempt.Value.ToString() : "UNKNOWN") + "\t" +
                     FramesToMilliseconds(_totalFrames) + "\t" +
-                    Math.Max(0, _lastScreen) + "\t" +
-                    Math.Max(0, currentAreaIndex) + "\t" +
-                    Math.Max(0, currentScreenInArea) + "\t" +
+                    Math.Max(0, currentAreaOrder) + "\t" +
+                    Math.Max(0, currentScreenOrder) + "\t" +
                     Math.Max(0, _pbAreaIndex) + "\t" +
                     Math.Max(0, _pbScreenInArea)
                 );
 
-                File.WriteAllText(_currentProgressPath, sb.ToString(), Encoding.UTF8);
+                File.WriteAllText(_statePath, sb.ToString(), Encoding.UTF8);
             }
             catch (Exception ex)
             {
-                LogError("Write current progress TSV", ex);
+                LogError("Write state TSV", ex);
             }
         }
 
@@ -148,10 +147,10 @@ namespace JKMetricsLite
             }
         }
 
-        private void GetCurrentProgress(out int areaIndex, out int screenInArea)
+        private void GetCurrentProgress(out int areaOrder, out int screenOrder)
         {
-            areaIndex = 0;
-            screenInArea = 0;
+            areaOrder = 0;
+            screenOrder = 0;
 
             if (_lastScreen < MinScreen || _lastScreen > MaxScreen)
             {
@@ -172,30 +171,35 @@ namespace JKMetricsLite
                 return;
             }
 
-            if (!int.TryParse(areaIndexMap[areaName], out areaIndex))
+            if (!int.TryParse(areaIndexMap[areaName], out areaOrder))
             {
-                areaIndex = 0;
+                areaOrder = 0;
                 return;
             }
 
-            screenInArea = GetScreenInAreaOrder(areaName, _lastScreen);
+            screenOrder = GetScreenInAreaOrder(areaName, _lastScreen);
 
-            if (screenInArea < 0)
+            if (screenOrder < 0)
             {
-                screenInArea = 0;
+                screenOrder = 0;
             }
         }
 
-        private void AppendScreenTimelineTsv()
+        private void AppendScreenTransitionTsv()
         {
-            if (_lastTimelineAppendFrames == _totalFrames)
+            if (_lastScreen < MinScreen || _lastScreen > MaxScreen)
+            {
+                return;
+            }
+
+            if (_lastTransitionScreen == _lastScreen)
             {
                 return;
             }
 
             try
             {
-                bool exists = File.Exists(_screenTimelinePath);
+                bool exists = File.Exists(_screenTransitionsPath);
 
                 var sb = new StringBuilder();
 
@@ -209,12 +213,12 @@ namespace JKMetricsLite
                     _lastScreen
                 );
 
-                File.AppendAllText(_screenTimelinePath, sb.ToString(), Encoding.UTF8);
-                _lastTimelineAppendFrames = _totalFrames;
+                File.AppendAllText(_screenTransitionsPath, sb.ToString(), Encoding.UTF8);
+                _lastTransitionScreen = _lastScreen;
             }
             catch (Exception ex)
             {
-                LogError("Append screen timeline TSV", ex);
+                LogError("Append screen transition TSV", ex);
             }
         }
 

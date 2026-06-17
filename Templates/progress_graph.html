@@ -40,10 +40,10 @@
 </div>
 
 <script>
-const timelineFilePath = "../raw_data/screen_timeline.tsv";
-const areaFilePath = "../raw_data/area_metrics.tsv";
-const screenOrderFilePath = "../raw_data/screen_order.tsv";
-const progressFilePath = "../raw_data/current_progress.tsv";
+const transitionsFilePath = "../raw_data/attempts/current/screen_transitions.tsv";
+const areaFilePath = "../raw_data/attempts/current/area_metrics.tsv";
+const screenOrderFilePath = "../raw_data/attempts/current/screen_order.tsv";
+const stateFilePath = "../raw_data/attempts/current/state.tsv";
 
 const maxPoints = 1500;
 let cachedAreaText = "";
@@ -108,13 +108,13 @@ function getRecentLines(text, maxLines) {
 
 async function updateStatus() {
   try {
-    const res = await fetch(progressFilePath + "?t=" + Date.now());
+    const res = await fetch(stateFilePath + "?t=" + Date.now());
     const text = await res.text();
     const lines = text.trim().split(/\r?\n/);
 
     if (lines.length <= 1) {
       document.getElementById("elapsed").textContent = "0h  0m  0s 000ms";
-      return;
+      return Number.NaN;
     }
 
     const header = lines[0].split("\t");
@@ -125,19 +125,22 @@ async function updateStatus() {
       row[key] = cols[index] || "";
     });
 
-    document.getElementById("elapsed").textContent = formatElapsedTime(Number(row.elapsed_ms));
+    const elapsedMs = Number(row.elapsed_ms);
+    document.getElementById("elapsed").textContent = formatElapsedTime(elapsedMs);
+    return elapsedMs;
   } catch (e) {
     document.getElementById("elapsed").textContent = "0h  0m  0s 000ms";
+    return Number.NaN;
   }
 }
 
-async function loadTimeline() {
+async function loadTransitions(currentElapsedMs) {
   const screenToProgress = await loadScreenToProgressMap();
-  const res = await fetch(timelineFilePath + "?t=" + Date.now());
+  const res = await fetch(transitionsFilePath + "?t=" + Date.now());
   const text = await res.text();
   const recentLines = getRecentLines(text, maxPoints);
 
-  return recentLines.map(line => {
+  const points = recentLines.map(line => {
     const tabIndex = line.indexOf("\t");
 
     if (tabIndex <= 0) {
@@ -163,6 +166,22 @@ async function loadTimeline() {
     Number.isFinite(p.elapsedMs) &&
     Number.isFinite(p.progressIndex)
   );
+
+  if (points.length > 0 && Number.isFinite(currentElapsedMs)) {
+    const last = points[points.length - 1];
+
+    if (currentElapsedMs > last.elapsedMs) {
+      points.push({
+        elapsedMs: currentElapsedMs,
+        progressIndex: last.progressIndex,
+        areaIndex: last.areaIndex,
+        screenInArea: last.screenInArea,
+        label: last.label
+      });
+    }
+  }
+
+  return points;
 }
 
 async function loadScreenToProgressMap() {
@@ -291,7 +310,7 @@ function drawChart(points) {
   ctx.strokeRect(paddingLeft, paddingTop, plotWidth, plotHeight);
 
   if (points.length === 0) {
-    ctx.fillText("No timeline data", paddingLeft + 20, paddingTop + 40);
+    ctx.fillText("No transition data", paddingLeft + 20, paddingTop + 40);
     return;
   }
 
@@ -381,10 +400,10 @@ function drawChart(points) {
 }
 
 async function update() {
-  await updateStatus();
+  const currentElapsedMs = await updateStatus();
 
   try {
-    const points = await loadTimeline();
+    const points = await loadTransitions(currentElapsedMs);
     drawChart(points);
   } catch (e) {
     const canvas = document.getElementById("chart");
@@ -392,7 +411,7 @@ async function update() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.font = "18px Cascadia Mono, Consolas, monospace";
     ctx.fillStyle = "white";
-    ctx.fillText("Failed to load screen_timeline.tsv", 20, 40);
+    ctx.fillText("Failed to load screen_transitions.tsv", 20, 40);
   }
 }
 

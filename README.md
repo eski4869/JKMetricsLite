@@ -19,23 +19,36 @@ Main features:
 
 When the mod runs, it creates a `JKMetricsLite` folder in the same folder as the mod.
 
-The mod also creates `JKMetricsLite.env` in the same folder as the mod if it does not already exist. To use a different output folder, edit `OUTPUT_DIR` in that file.
+Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Restart the game after editing this file.
 
-```env
-OUTPUT_DIR=C:\Path\To\JKMetricsLite
+```xml
+<MetricsPreferences>
+  <IsEnabled>true</IsEnabled>
+  <OutputDir></OutputDir>
+  <AttemptBackupGenerations>1</AttemptBackupGenerations>
+</MetricsPreferences>
 ```
 
-If `OUTPUT_DIR` is empty or `JKMetricsLite.env` is missing, the default folder in the same folder as the mod is used.
+Leave `OutputDir` empty to use the default `JKMetricsLite` folder in the same folder as the mod. Relative paths are based on this mod's folder. Absolute paths are also supported.
+
+`AttemptBackupGenerations` controls how many previous attempt folders are kept under `raw_data/attempts/`. The default is `1`, and values are capped at `10`.
 
 Generated files are organized by purpose:
 
 ```text
 JKMetricsLite/
 |-- raw_data/
-|   |-- area_metrics.tsv
-|   |-- screen_timeline.tsv
-|   |-- screen_order.tsv
-|   |-- current_progress.tsv
+|   |-- attempts/
+|   |   |-- current/
+|   |   |   |-- area_metrics.tsv
+|   |   |   |-- screen_order.tsv
+|   |   |   |-- screen_transitions.tsv
+|   |   |   `-- state.tsv
+|   |   `-- 777/
+|   |       |-- area_metrics.tsv
+|   |       |-- screen_order.tsv
+|   |       |-- screen_transitions.tsv
+|   |       `-- state.tsv
 |   `-- total_stats.tsv
 |-- obs/
 |   |-- area_name_split.html
@@ -60,13 +73,39 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 
 | Type | File | Key | Values | Update timing |
 | --- | --- | --- | --- | --- |
-| Run Metrics | `raw_data/area_metrics.tsv` | Area | Split time, duration, current and excluded flags | Rewritten about every 60 frames. |
-| Run Metrics | `raw_data/screen_timeline.tsv` | Elapsed time | Screen | Appended about every 60 frames. Reset with new metrics. |
-| Run Metrics | `raw_data/screen_order.tsv` | Area | First-reached screen order | When a new screen order entry is discovered and on exit. |
-| Current State | `raw_data/current_progress.tsv` | Current attempt | Attempt, elapsed time, current screen, and Now/PB progress | Rewritten about every 60 frames. |
+| Run Metrics | `raw_data/attempts/current/area_metrics.tsv` | Area | Split time, duration, current and excluded flags | Rewritten about every 60 frames. |
+| Run Metrics | `raw_data/attempts/current/screen_order.tsv` | Area | First-reached screen order | When a new screen order entry is discovered and on exit. |
+| Run Metrics | `raw_data/attempts/current/screen_transitions.tsv` | Elapsed time | Screen transition events | Appended when the screen changes. |
+| Current State | `raw_data/attempts/current/state.tsv` | Current attempt | Attempt, elapsed time, and Now/PB progress | Rewritten about every 60 frames. |
 
 The raw TSV files store numeric values such as milliseconds. Formatting for normal or speedrun-style display is handled by the HTML views.
-Run metrics are restored from `area_metrics.tsv`, `screen_order.tsv`, and `current_progress.tsv` when continuing the same attempt.
+Run metrics are restored from the attempt TSV files when continuing the same attempt.
+
+### TSV Columns
+
+`raw_data/attempts/current/area_metrics.tsv`
+
+```text
+area_name	split_ms	duration_ms	is_current	is_excluded
+```
+
+`raw_data/attempts/current/screen_order.tsv`
+
+```text
+area_name	screen
+```
+
+`raw_data/attempts/current/screen_transitions.tsv`
+
+```text
+elapsed_ms	screen
+```
+
+`raw_data/attempts/current/state.tsv`
+
+```text
+attempt	elapsed_ms	current_area_order	current_screen_order	pb_area_order	pb_screen_order
+```
 
 ### OBS Views
 
@@ -74,7 +113,7 @@ Add a Browser Source in OBS, enable local file mode, and select one of the gener
 
 `obs/area_name_split.html`
 
-Automatically detects area names and displays PB, Now, split time, a relative duration bar, and duration. Use this for blind custom map playthroughs or general exploration.
+Automatically detects area names and displays PB, Now, split, a relative duration bar, and duration. Use this for blind custom map playthroughs or general exploration.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/5ba263eb-424e-4c66-8622-7cced2ad0310" />
 
@@ -87,13 +126,13 @@ not by the map's internal area order. Hidden or optional areas can throw off the
 
 `obs/area_name_split_speedrun.html`
 
-A compact speedrun-focused area name split table using `m s ms` time format.
+A speedrun-focused area name split table using `m s ms` time format.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/78197173-a585-4be7-a0dc-73e0fcbfe789" />
 
 `obs/area_number_split_speedrun.html`
 
-A compact speedrun-focused area number split table using `m s ms` time format.
+A speedrun-focused area number split table using `m s ms` time format.
 
 
 `obs/progress_graph.html`
@@ -113,6 +152,12 @@ Long-term metrics are accumulated across play sessions and are not reset with ru
 | Type | File | Key | Values | Update timing |
 | --- | --- | --- | --- | --- |
 | Long-Term Metrics | `raw_data/total_stats.tsv` | Sample time | Total frames, jumps, and falls | Appended on mod start, about every 3600 frames, and on level end. Duplicate samples may be kept. |
+
+`raw_data/total_stats.tsv`
+
+```text
+sampled_at	total_frames	total_jumps	total_falls
+```
 
 Open `local/recap.html` directly in a browser and select `raw_data/total_stats.tsv` to view jump-based recaps, including total jumps/falls, active days, streaks, best day/month/weekday/hour, hourly heatmaps, and monthly jumps/falls.
 
@@ -173,6 +218,8 @@ Split times are captured from the game's run timer. Duration is counted separate
 ## Reset Metrics
 
 Area, screen, and PB metrics are reset automatically when you start a new game. If you continue a previous game, the last saved metrics are carried over.
+
+When a new game starts, the previous `raw_data/attempts/current/` files are copied to `raw_data/attempts/{attempt}/` before the current attempt data is reset. By default, only the latest previous attempt is kept.
 
 `total_stats.tsv` is not reset with run metrics. It keeps accumulating long-term stats.
 

@@ -20,7 +20,7 @@ namespace JKMetricsLite
             _screenOrderSaveCounter = 0;
             _totalStatsCounter = 0;
             _lastScreen = -1;
-            _lastTimelineAppendFrames = -1;
+            _lastTransitionScreen = -1;
             _lastArea = "Unknown";
             _screenOrderDirty = false;
 
@@ -31,18 +31,18 @@ namespace JKMetricsLite
             _attempt = null;
         }
 
-        private void ResetTimelineFile()
+        private void ResetScreenTransitionsFile()
         {
             try
             {
-                if (File.Exists(_screenTimelinePath))
+                if (File.Exists(_screenTransitionsPath))
                 {
-                    File.Delete(_screenTimelinePath);
+                    File.Delete(_screenTransitionsPath);
                 }
             }
             catch (Exception ex)
             {
-                LogError("Reset timeline file", ex);
+                LogError("Reset screen transitions file", ex);
             }
         }
 
@@ -89,7 +89,7 @@ namespace JKMetricsLite
         {
             if (!File.Exists(_areaMetricsPath) ||
                 !File.Exists(_screenOrderPath) ||
-                !File.Exists(_currentProgressPath))
+                !File.Exists(_statePath))
             {
                 return false;
             }
@@ -108,7 +108,8 @@ namespace JKMetricsLite
                 ResetStats();
                 LoadAreaMetrics();
                 LoadScreenOrder();
-                LoadCurrentProgress();
+                LoadScreenTransitions();
+                LoadState();
 
                 _attempt = currentAttempt.HasValue
                     ? currentAttempt
@@ -150,15 +151,15 @@ namespace JKMetricsLite
                 _areaFrames[area] = MillisecondsToFrames(durationMilliseconds);
                 _areaAppearedOrder.Add(area);
 
-                long splitTimeMilliseconds;
+                long firstReachedMilliseconds;
 
                 if (long.TryParse(
-                    GetTsvValue(row, "split_time_ms"),
-                    out splitTimeMilliseconds
+                    GetTsvValue(row, "split_ms"),
+                    out firstReachedMilliseconds
                 ))
                 {
                     _areaFirstReachedMilliseconds[area] =
-                        Math.Max(0, splitTimeMilliseconds);
+                        Math.Max(0, firstReachedMilliseconds);
                 }
 
                 if (GetTsvValue(row, "is_excluded") == "1")
@@ -191,13 +192,41 @@ namespace JKMetricsLite
                     continue;
                 }
 
-                RegisterAreaScreenIfNeeded(area, screen);
+                if (!_areaScreenAppearedOrder.ContainsKey(area))
+                {
+                    _areaScreenAppearedOrder[area] = new List<int>();
+                }
+
+                if (!_areaScreenAppearedOrder[area].Contains(screen))
+                {
+                    _areaScreenAppearedOrder[area].Add(screen);
+                }
             }
         }
 
-        private void LoadCurrentProgress()
+        private void LoadScreenTransitions()
         {
-            List<Dictionary<string, string>> rows = ReadTsvRows(_currentProgressPath);
+            Dictionary<string, string> row = ReadLastTsvRow(_screenTransitionsPath);
+
+            if (row == null)
+            {
+                return;
+            }
+
+            int screen;
+
+            if (int.TryParse(GetTsvValue(row, "screen"), out screen) &&
+                screen >= MinScreen &&
+                screen <= MaxScreen)
+            {
+                _lastScreen = screen;
+                _lastTransitionScreen = screen;
+            }
+        }
+
+        private void LoadState()
+        {
+            List<Dictionary<string, string>> rows = ReadTsvRows(_statePath);
 
             if (rows.Count == 0)
             {
@@ -220,19 +249,6 @@ namespace JKMetricsLite
             ))
             {
                 _totalFrames = MillisecondsToFrames(elapsedMilliseconds);
-            }
-
-            int currentScreen;
-
-            if (int.TryParse(
-                GetTsvValue(row, "current_screen"),
-                out currentScreen
-            ) &&
-                currentScreen >= MinScreen &&
-                currentScreen <= MaxScreen)
-            {
-                _lastScreen = currentScreen;
-                _lastArea = GetAreaNameForScreen(currentScreen);
             }
         }
 
@@ -267,7 +283,7 @@ namespace JKMetricsLite
             try
             {
                 List<Dictionary<string, string>> rows =
-                    ReadTsvRows(_currentProgressPath);
+                    ReadTsvRows(_statePath);
 
                 if (rows.Count == 0)
                 {
@@ -292,6 +308,11 @@ namespace JKMetricsLite
 
         private List<Dictionary<string, string>> ReadTsvRows(string path)
         {
+            if (!File.Exists(path))
+            {
+                return new List<Dictionary<string, string>>();
+            }
+
             string[] lines = File.ReadAllLines(path, Encoding.UTF8);
             var rows = new List<Dictionary<string, string>>();
 
@@ -321,6 +342,43 @@ namespace JKMetricsLite
             }
 
             return rows;
+        }
+
+        private Dictionary<string, string> ReadLastTsvRow(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            string[] lines = File.ReadAllLines(path, Encoding.UTF8);
+
+            if (lines.Length <= 1)
+            {
+                return null;
+            }
+
+            string[] headers = lines[0].Split('\t');
+
+            for (int i = lines.Length - 1; i >= 1; i--)
+            {
+                if (string.IsNullOrWhiteSpace(lines[i]))
+                {
+                    continue;
+                }
+
+                string[] values = lines[i].Split('\t');
+                var row = new Dictionary<string, string>();
+
+                for (int j = 0; j < headers.Length; j++)
+                {
+                    row[headers[j]] = j < values.Length ? values[j] : "";
+                }
+
+                return row;
+            }
+
+            return null;
         }
 
         private string GetTsvValue(

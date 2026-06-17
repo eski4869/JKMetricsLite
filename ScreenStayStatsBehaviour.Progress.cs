@@ -54,7 +54,7 @@ namespace JKMetricsLite
             }
 
             RecalculatePb();
-            WriteOutputFiles(true);
+            WriteOutputFiles();
             WriteScreenOrderTsv(false);
         }
 
