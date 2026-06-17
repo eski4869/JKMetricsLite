@@ -5,11 +5,11 @@
   <style>
     body {
       margin: 0;
-      padding: 12px;
+      padding: 8px;
       background: transparent;
       color: #fff;
       font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
-      font-size: 24px;
+      font-size: 18px;
       line-height: 1.35;
     }
 
@@ -20,7 +20,7 @@
     }
 
     th, td {
-      padding: 4px 10px;
+      padding: 3px 8px;
       text-align: left;
       vertical-align: top;
     }
@@ -45,9 +45,11 @@
     }
 
     .current td {
+      background: rgba(255, 255, 255, 0.16);
       color: #fff;
       font-weight: bold;
     }
+
   </style>
 </head>
 <body>
@@ -131,7 +133,7 @@ async function updateAreaTable() {
       return "<tr" + (isCurrent ? " class='current'" : "") + ">" +
         "<td class='area'>" + escapeHtml(areaName) + "</td>" +
         "<td class='time'>" + escapeHtml(formatSpeedrunTime(splitTimeMs)) + "</td>" +
-        "<td class='time'>" + escapeHtml(formatSpeedrunTime(durationMs)) + (isCurrent ? " &lt;" : "") + "</td>" +
+        "<td class='time'>" + escapeHtml(formatSpeedrunTime(durationMs)) + "</td>" +
       "</tr>";
     }).join("");
 
