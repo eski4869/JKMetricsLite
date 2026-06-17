@@ -17,7 +17,7 @@
       display: inline-block;
       margin-bottom: 6px;
       padding: 6px 12px;
-      background: rgba(0, 0, 0, 0.75);
+      background: transparent;
       color: #fff;
       font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
       font-size: 34px;
@@ -28,7 +28,7 @@
     table {
       border-collapse: collapse;
       table-layout: fixed;
-      background: rgba(0, 0, 0, 0.75);
+      background: transparent;
     }
 
     th, td {
@@ -43,8 +43,8 @@
 
     th.area,
     td.area {
-      width: 8ch;
-      max-width: 8ch;
+      width: 25ch;
+      max-width: 25ch;
       white-space: normal;
       overflow-wrap: anywhere;
       word-break: break-word;
@@ -94,13 +94,13 @@
 <body>
 <div id="progress">
   <div id="pb">PB: -</div>
-  <div id="current">Current: -</div>
+  <div id="current">Now: -</div>
 </div>
 <br>
 <table>
   <thead>
     <tr>
-      <th class="area">Area</th>
+      <th class="area">Area Name</th>
       <th class="time">Split Time</th>
       <th class="graph">Duration Bar</th>
       <th class="time">Duration</th>
@@ -185,10 +185,10 @@ async function updateProgress() {
       Number(row.pb_screen_in_area)
     );
 
-    document.getElementById("current").textContent = "Current: " + current;
+    document.getElementById("current").textContent = "Now: " + current;
     document.getElementById("pb").textContent = "PB: " + pb;
   } catch (e) {
-    document.getElementById("current").textContent = "Current: -";
+    document.getElementById("current").textContent = "Now: -";
     document.getElementById("pb").textContent = "PB: -";
   }
 }
@@ -206,9 +206,9 @@ async function updateAreaTable() {
       return;
     }
 
-    const rows = data.filter(row => row.is_excluded !== "1").map((row, index) => {
+    const rows = data.filter(row => row.is_excluded !== "1").map(row => {
       return {
-        areaIndex: index + 1,
+        areaName: row.area_name || "",
         splitTimeMs: row.split_time_ms === "" ? Number.NaN : Number(row.split_time_ms),
         durationMs: Number(row.duration_ms) || 0,
         isCurrent: row.is_current === "1"
@@ -219,10 +219,9 @@ async function updateAreaTable() {
 
     const html = rows.map(row => {
       const durationPercent = getDurationPercent(row.durationMs, maxDurationMs);
-      const areaText = "Area " + row.areaIndex;
 
       return "<tr" + (row.isCurrent ? " class='current'" : "") + ">" +
-        "<td class='area'>" + escapeHtml(areaText) + "</td>" +
+        "<td class='area'>" + escapeHtml(row.areaName) + "</td>" +
         "<td class='time'>" + escapeHtml(formatTime(row.splitTimeMs)) + "</td>" +
         "<td class='graph'><div class='duration-track'>" +
           "<div class='duration-fill' style='width:" + durationPercent.toFixed(2) + "%'></div>" +

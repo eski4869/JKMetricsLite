@@ -1,0 +1,149 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      padding: 8px;
+      background: transparent;
+      color: #fff;
+      font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    table {
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: transparent;
+    }
+
+    th, td {
+      padding: 3px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    th.area,
+    td.area {
+      width: 25ch;
+      max-width: 25ch;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    th.time,
+    td.time {
+      width: 15ch;
+      white-space: pre;
+    }
+
+    .current td {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      font-weight: bold;
+    }
+
+  </style>
+</head>
+<body>
+<table>
+  <thead>
+    <tr>
+      <th class="area">Area Name</th>
+      <th class="time">Split Time</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<script>
+const areaFilePath = "../raw_data/area_metrics.tsv";
+
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function parseRows(text) {
+  const lines = text.trim().split(/\r?\n/);
+
+  if (lines.length <= 1) {
+    return [];
+  }
+
+  const header = lines.shift().split("\t");
+
+  return lines.map(line => {
+    const cols = line.split("\t");
+    const row = {};
+
+    header.forEach((key, index) => {
+      row[key] = cols[index] || "";
+    });
+
+    return row;
+  });
+}
+
+function formatSpeedrunTime(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+    return "-";
+  }
+
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const ms = Math.floor(milliseconds % 1000);
+
+  return String(minutes).padStart(3, " ") + "m " +
+    String(seconds).padStart(2, "0") + "s " +
+    String(ms).padStart(3, "0") + "ms";
+}
+
+async function updateAreaTable() {
+  try {
+    const res = await fetch(areaFilePath + "?t=" + Date.now());
+    const text = await res.text();
+
+    const tbody = document.getElementById("rows");
+    const rows = parseRows(text);
+
+    if (rows.length === 0) {
+      tbody.innerHTML = "";
+      return;
+    }
+
+    const html = rows.filter(row => row.is_excluded !== "1").map(row => {
+      const areaName = row.area_name || "";
+      const isCurrent = row.is_current === "1";
+      const splitTimeMs = row.split_time_ms === "" ? Number.NaN : Number(row.split_time_ms);
+
+      return "<tr" + (isCurrent ? " class='current'" : "") + ">" +
+        "<td class='area'>" + escapeHtml(areaName) + "</td>" +
+        "<td class='time'>" + escapeHtml(formatSpeedrunTime(splitTimeMs)) + "</td>" +
+      "</tr>";
+    }).join("");
+
+    tbody.innerHTML = html;
+  } catch (e) {
+    document.getElementById("rows").innerHTML =
+      "<tr><td colspan='2'>Failed to load area_metrics.tsv</td></tr>";
+  }
+}
+
+updateAreaTable();
+setInterval(updateAreaTable, 500);
+</script>
+</body>
+</html>
+

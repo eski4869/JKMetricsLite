@@ -7,9 +7,10 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
-        private const string AreaNameTemplateName = "AreaName.html";
-        private const string AreaNoTemplateName = "AreaNo.html";
-        private const string AreaNameSpeedrunTemplateName = "AreaNameSpeedrun.html";
+        private const string AreaNameSplitTemplateName = "AreaNameSplit.html";
+        private const string AreaNumberSplitTemplateName = "AreaNumberSplit.html";
+        private const string AreaNameSplitSpeedrunTemplateName = "AreaNameSplitSpeedrun.html";
+        private const string AreaNumberSplitSpeedrunTemplateName = "AreaNumberSplitSpeedrun.html";
         private const string ScreenGraphTemplateName = "ScreenGraph.html";
         private const string RecapTemplateName = "Recap.html";
 

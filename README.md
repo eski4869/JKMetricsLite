@@ -38,9 +38,10 @@ JKMetricsLite/
 |   |-- current_progress.tsv
 |   `-- total_stats.tsv
 |-- obs/
-|   |-- area_name.html
-|   |-- area_no.html
-|   |-- area_name_speedrun.html
+|   |-- area_name_split.html
+|   |-- area_number_split.html
+|   |-- area_name_split_speedrun.html
+|   |-- area_number_split_speedrun.html
 |   `-- screen_graph.html
 |-- local/
 |   `-- recap.html
@@ -62,7 +63,7 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 | Run Metrics | `raw_data/area_metrics.tsv` | Area | Split time, duration, current and excluded flags | Rewritten about every 60 frames. |
 | Run Metrics | `raw_data/screen_timeline.tsv` | Elapsed time | Screen | Appended about every 60 frames. Reset with new metrics. |
 | Run Metrics | `raw_data/screen_order.tsv` | Area | First-reached screen order | When the reached-screen order changes, checked about every 3600 frames and on exit. |
-| Current State | `raw_data/current_progress.tsv` | Current attempt | Attempt, elapsed time, current screen, and Current/PB progress | Rewritten about every 60 frames. |
+| Current State | `raw_data/current_progress.tsv` | Current attempt | Attempt, elapsed time, current screen, and Now/PB progress | Rewritten about every 60 frames. |
 
 The raw TSV files store numeric values such as milliseconds. Formatting for normal or speedrun-style display is handled by the HTML views.
 Run metrics are restored from `area_metrics.tsv`, `screen_order.tsv`, and `current_progress.tsv` when continuing the same attempt.
@@ -71,24 +72,28 @@ Run metrics are restored from `area_metrics.tsv`, `screen_order.tsv`, and `curre
 
 Add a Browser Source in OBS, enable local file mode, and select one of the generated HTML files in the `obs` folder.
 
-`obs/area_name.html`
+`obs/area_name_split.html`
 
-Automatically detects area names and displays Current, PB, split time, a relative duration bar, and duration. Use this for blind custom map playthroughs or general exploration.
+Automatically detects area names and displays PB, Now, split time, a relative duration bar, and duration. Use this for blind custom map playthroughs or general exploration.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/5ba263eb-424e-4c66-8622-7cced2ad0310" />
 
-`obs/area_no.html`
+`obs/area_number_split.html`
 
 Use this if you want to display area numbers instead of area names. Be aware that this mode numbers areas by first-reach order,
 not by the map's internal area order. Hidden or optional areas can throw off the numbering.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/e29ce420-da61-4183-9861-313fc0f7df46" />
 
-`obs/area_name_speedrun.html`
+`obs/area_name_split_speedrun.html`
 
-A speedrun-focused area name table. Extra columns are removed, and times are shown in `m s ms` format.
+A compact speedrun-focused area name split table using `m s ms` time format.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/78197173-a585-4be7-a0dc-73e0fcbfe789" />
+
+`obs/area_number_split_speedrun.html`
+
+A compact speedrun-focused area number split table using `m s ms` time format.
 
 
 `obs/screen_graph.html`

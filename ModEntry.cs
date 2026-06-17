@@ -362,9 +362,10 @@ namespace JKMetricsLite
                 TotalStatsPath = Path.Combine(rawDataDir, "total_stats.tsv")
             };
 
-            WriteOverlayHtmlIfMissing(obsDir, "area_name.html", LoadOverlayTemplate(AreaNameTemplateName));
-            WriteOverlayHtmlIfMissing(obsDir, "area_no.html", LoadOverlayTemplate(AreaNoTemplateName));
-            WriteOverlayHtmlIfMissing(obsDir, "area_name_speedrun.html", LoadOverlayTemplate(AreaNameSpeedrunTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "area_name_split.html", LoadOverlayTemplate(AreaNameSplitTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "area_number_split.html", LoadOverlayTemplate(AreaNumberSplitTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "area_name_split_speedrun.html", LoadOverlayTemplate(AreaNameSplitSpeedrunTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "area_number_split_speedrun.html", LoadOverlayTemplate(AreaNumberSplitSpeedrunTemplateName));
             WriteOverlayHtmlIfMissing(obsDir, "screen_graph.html", LoadOverlayTemplate(ScreenGraphTemplateName));
             WriteOverlayHtmlIfMissing(localDir, "recap.html", LoadOverlayTemplate(RecapTemplateName));
 

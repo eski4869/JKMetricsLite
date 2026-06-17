@@ -16,7 +16,7 @@
     table {
       border-collapse: collapse;
       table-layout: fixed;
-      background: rgba(0, 0, 0, 0.75);
+      background: transparent;
     }
 
     th, td {
@@ -31,8 +31,8 @@
 
     th.area,
     td.area {
-      width: 25ch;
-      max-width: 25ch;
+      width: 8ch;
+      max-width: 8ch;
       white-space: normal;
       overflow-wrap: anywhere;
       word-break: break-word;
@@ -56,9 +56,8 @@
 <table>
   <thead>
     <tr>
-      <th class="area">Area</th>
+      <th class="area">Area No.</th>
       <th class="time">Split Time</th>
-      <th class="time">Duration</th>
     </tr>
   </thead>
   <tbody id="rows"></tbody>
@@ -124,23 +123,21 @@ async function updateAreaTable() {
       return;
     }
 
-    const html = rows.filter(row => row.is_excluded !== "1").map(row => {
-      const areaName = row.area_name || "";
+    const html = rows.filter(row => row.is_excluded !== "1").map((row, index) => {
+      const areaText = "Area " + (index + 1);
       const isCurrent = row.is_current === "1";
       const splitTimeMs = row.split_time_ms === "" ? Number.NaN : Number(row.split_time_ms);
-      const durationMs = Number(row.duration_ms) || 0;
 
       return "<tr" + (isCurrent ? " class='current'" : "") + ">" +
-        "<td class='area'>" + escapeHtml(areaName) + "</td>" +
+        "<td class='area'>" + escapeHtml(areaText) + "</td>" +
         "<td class='time'>" + escapeHtml(formatSpeedrunTime(splitTimeMs)) + "</td>" +
-        "<td class='time'>" + escapeHtml(formatSpeedrunTime(durationMs)) + "</td>" +
       "</tr>";
     }).join("");
 
     tbody.innerHTML = html;
   } catch (e) {
     document.getElementById("rows").innerHTML =
-      "<tr><td colspan='3'>Failed to load area_metrics.tsv</td></tr>";
+      "<tr><td colspan='2'>Failed to load area_metrics.tsv</td></tr>";
   }
 }
 

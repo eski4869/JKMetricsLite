@@ -64,9 +64,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Templates\AreaName.html" />
-    <EmbeddedResource Include="Templates\AreaNo.html" />
-    <EmbeddedResource Include="Templates\AreaNameSpeedrun.html" />
+    <EmbeddedResource Include="Templates\AreaNameSplit.html" />
+    <EmbeddedResource Include="Templates\AreaNumberSplit.html" />
+    <EmbeddedResource Include="Templates\AreaNameSplitSpeedrun.html" />
+    <EmbeddedResource Include="Templates\AreaNumberSplitSpeedrun.html" />
     <EmbeddedResource Include="Templates\ScreenGraph.html" />
     <EmbeddedResource Include="Templates\Recap.html" />
   </ItemGroup>
