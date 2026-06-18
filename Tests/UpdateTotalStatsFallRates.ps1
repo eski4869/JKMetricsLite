@@ -1,5 +1,5 @@
 param(
-    [string]$Path = ".\total_stats.tsv"
+    [string]$Path = ".\total_metrics.tsv"
 )
 
 $source = [System.IO.Path]::GetFullPath($Path)

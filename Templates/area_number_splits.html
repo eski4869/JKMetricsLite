@@ -45,12 +45,13 @@
 
     th {
       border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+      text-align: center;
     }
 
     th.area,
     td.area {
-      width: 23ch;
-      max-width: 23ch;
+      width: 8ch;
+      max-width: 8ch;
       white-space: normal;
       overflow-wrap: anywhere;
       word-break: break-word;
@@ -117,7 +118,7 @@
 </table>
 
 <script>
-const areaFilePath = "../raw_data/attempts/current/area_metrics.tsv";
+const areaFilePath = "../raw_data/attempts/current/area_progress.tsv";
 const stateFilePath = "../raw_data/attempts/current/state.tsv";
 function escapeHtml(value) {
   return value
@@ -212,9 +213,9 @@ async function updateAreaTable() {
       return;
     }
 
-    const rows = data.filter(row => row.is_excluded !== "1").map(row => {
+    const rows = data.filter(row => row.is_excluded !== "1").map((row, index) => {
       return {
-        areaName: row.area_name || "",
+        areaIndex: index + 1,
         splitMs: row.split_ms === "" ? Number.NaN : Number(row.split_ms),
         durationMs: Number(row.duration_ms) || 0,
         isCurrent: row.is_current === "1"
@@ -225,9 +226,10 @@ async function updateAreaTable() {
 
     const html = rows.map(row => {
       const durationPercent = getDurationPercent(row.durationMs, maxDurationMs);
+      const areaText = "Area " + row.areaIndex;
 
       return "<tr" + (row.isCurrent ? " class='current'" : "") + ">" +
-        "<td class='area'>" + escapeHtml(row.areaName) + "</td>" +
+        "<td class='area'>" + escapeHtml(areaText) + "</td>" +
         "<td class='time'>" + escapeHtml(formatTime(row.splitMs)) + "</td>" +
         "<td class='graph'><div class='duration-track'>" +
           "<div class='duration-fill' style='width:" + durationPercent.toFixed(2) + "%'></div>" +
@@ -239,7 +241,7 @@ async function updateAreaTable() {
     tbody.innerHTML = html;
   } catch (e) {
     document.getElementById("rows").innerHTML =
-      "<tr><td colspan='4'>Failed to load area_metrics.tsv</td></tr>";
+      "<tr><td colspan='4'>Failed to load area_progress.tsv</td></tr>";
   }
 }
 

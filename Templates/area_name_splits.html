@@ -45,6 +45,7 @@
 
     th {
       border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+      text-align: center;
     }
 
     th.area,
@@ -58,7 +59,7 @@
 
     th.time,
     td.time {
-      width: 15ch;
+      width: 13ch;
       white-space: pre;
     }
 
@@ -112,13 +113,13 @@
       <th class="time"></th>
     </tr>
   </thead>
-  <tbody id="rows"></tbody>
+  <tbody id="rows">
+  </tbody>
 </table>
 
 <script>
-const areaFilePath = "../raw_data/attempts/current/area_metrics.tsv";
+const areaFilePath = "../raw_data/attempts/current/area_progress.tsv";
 const stateFilePath = "../raw_data/attempts/current/state.tsv";
-
 function escapeHtml(value) {
   return value
     .replaceAll("&", "&amp;")
@@ -162,19 +163,19 @@ function formatProgress(areaIndex, screenInArea) {
     : "-";
 }
 
-function formatSpeedrunTime(milliseconds) {
+function formatTime(milliseconds) {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) {
     return "-";
   }
 
   const totalSeconds = Math.floor(milliseconds / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(totalSeconds / 60) % 60;
   const seconds = totalSeconds % 60;
-  const ms = Math.floor(milliseconds % 1000);
 
-  return String(minutes).padStart(3, " ") + "m " +
-    String(seconds).padStart(2, "0") + "s " +
-    String(ms).padStart(3, "0") + "ms";
+  return String(hours).padStart(2, " ") + "h " +
+    String(minutes).padStart(2, " ") + "m " +
+    String(seconds).padStart(2, " ") + "s";
 }
 
 async function updateProgress() {
@@ -205,14 +206,14 @@ async function updateAreaTable() {
     const text = await res.text();
 
     const tbody = document.getElementById("rows");
-    const rows = parseRows(text);
+    const data = parseRows(text);
 
-    if (rows.length === 0) {
+    if (data.length === 0) {
       tbody.innerHTML = "";
       return;
     }
 
-    const visibleRows = rows.filter(row => row.is_excluded !== "1").map(row => {
+    const rows = data.filter(row => row.is_excluded !== "1").map(row => {
       return {
         areaName: row.area_name || "",
         splitMs: row.split_ms === "" ? Number.NaN : Number(row.split_ms),
@@ -221,24 +222,25 @@ async function updateAreaTable() {
       };
     });
 
-    const maxDurationMs = visibleRows.reduce((max, row) => Math.max(max, row.durationMs), 0);
-    const html = visibleRows.map(row => {
+    const maxDurationMs = rows.reduce((max, row) => Math.max(max, row.durationMs), 0);
+
+    const html = rows.map(row => {
       const durationPercent = getDurationPercent(row.durationMs, maxDurationMs);
 
       return "<tr" + (row.isCurrent ? " class='current'" : "") + ">" +
         "<td class='area'>" + escapeHtml(row.areaName) + "</td>" +
-        "<td class='time'>" + escapeHtml(formatSpeedrunTime(row.splitMs)) + "</td>" +
+        "<td class='time'>" + escapeHtml(formatTime(row.splitMs)) + "</td>" +
         "<td class='graph'><div class='duration-track'>" +
           "<div class='duration-fill' style='width:" + durationPercent.toFixed(2) + "%'></div>" +
         "</div></td>" +
-        "<td class='time'>" + escapeHtml(formatSpeedrunTime(row.durationMs)) + "</td>" +
+        "<td class='time'>" + escapeHtml(formatTime(row.durationMs)) + "</td>" +
       "</tr>";
     }).join("");
 
     tbody.innerHTML = html;
   } catch (e) {
     document.getElementById("rows").innerHTML =
-      "<tr><td colspan='4'>Failed to load area_metrics.tsv</td></tr>";
+      "<tr><td colspan='4'>Failed to load area_progress.tsv</td></tr>";
   }
 }
 
@@ -252,4 +254,5 @@ setInterval(update, 500);
 </script>
 </body>
 </html>
+
 

@@ -370,14 +370,14 @@
     </div>
     <div class="controls">
       <div class="control-row">
-        <button id="openFile" title="Choose total_stats.tsv">Choose TSV File</button>
+        <button id="openFile" title="Choose total_metrics.tsv">Choose TSV File</button>
         <input id="fileInput" type="file" accept=".tsv,text/tab-separated-values,text/plain" hidden>
         <button id="reloadFile" title="Reload selected TSV" aria-label="Reload selected TSV" disabled>&#x21bb;</button>
         <button id="prevYear" title="Previous year">&lt;</button>
         <div id="yearLabel">----</div>
         <button id="nextYear" title="Next year">&gt;</button>
       </div>
-      <div id="status" class="sub control-status status-loading">Choose total_stats.tsv to render your metrics.</div>
+      <div id="status" class="sub control-status status-loading">Choose total_metrics.tsv to render your metrics.</div>
     </div>
   </header>
 
@@ -871,7 +871,7 @@ async function openFile() {
 
 async function reloadFile() {
   if (!selectedFile) {
-    setStatus("Choose total_stats.tsv before reloading.", "error");
+    setStatus("Choose total_metrics.tsv before reloading.", "error");
     return;
   }
 

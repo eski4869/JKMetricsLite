@@ -72,12 +72,14 @@ namespace JKMetricsLite
         {
             long firstReachedMilliseconds = FramesToMilliseconds(_totalFrames);
 
-            TimeSpan? currentRunTime = TryGetCurrentRunTime();
-
-            if (currentRunTime.HasValue && currentRunTime.Value.TotalMilliseconds >= 0)
+            if (_totalFrames > 0 || _areaFirstReachedMilliseconds.Count > 0)
             {
-                firstReachedMilliseconds = (long)Math.Round(currentRunTime.Value.TotalMilliseconds);
+                TimeSpan? currentRunTime = TryGetCurrentRunTime();
 
+                if (currentRunTime.HasValue && currentRunTime.Value.TotalMilliseconds >= 0)
+                {
+                    firstReachedMilliseconds = (long)Math.Round(currentRunTime.Value.TotalMilliseconds);
+                }
             }
 
             _areaFirstReachedMilliseconds[areaName] = firstReachedMilliseconds;
