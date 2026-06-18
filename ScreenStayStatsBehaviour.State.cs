@@ -20,7 +20,6 @@ namespace JKMetricsLite
             _screenOrderSaveCounter = 0;
             _totalStatsCounter = 0;
             _lastScreen = -1;
-            _lastTransitionScreen = -1;
             _lastArea = "Unknown";
             _screenOrderDirty = false;
 
@@ -31,22 +30,22 @@ namespace JKMetricsLite
             _attempt = null;
         }
 
-        private void ResetScreenTransitionsFile()
+        private void ResetScreenMetricsFile()
         {
             try
             {
-                if (File.Exists(_screenTransitionsPath))
+                if (File.Exists(_screenMetricsPath))
                 {
-                    File.Delete(_screenTransitionsPath);
+                    File.Delete(_screenMetricsPath);
                 }
             }
             catch (Exception ex)
             {
-                LogError("Reset screen transitions file", ex);
+                LogError("Reset screen metrics file", ex);
             }
         }
 
-        private void ReconcileLoadedStateWithGameTime()
+        private void SyncLoadedElapsedWithGameTime()
         {
             TimeSpan? currentRunTime = TryGetCurrentRunTime();
 
@@ -65,29 +64,16 @@ namespace JKMetricsLite
             int gameFrames = (int)Math.Round(
                 currentRunTime.Value.TotalSeconds / secondsPerFrame
             );
-            int delta = gameFrames - _totalFrames;
 
-            if (delta <= 0)
+            if (gameFrames > _totalFrames)
             {
-                return;
+                _totalFrames = gameFrames;
             }
-
-            if (!string.IsNullOrEmpty(_lastArea) && _lastArea != "Unknown")
-            {
-                if (!_areaFrames.ContainsKey(_lastArea))
-                {
-                    _areaFrames[_lastArea] = 0;
-                }
-
-                _areaFrames[_lastArea] += delta;
-            }
-
-            _totalFrames = gameFrames;
         }
 
         private bool LoadRunDataIfSameAttempt(int? currentAttempt)
         {
-            if (!File.Exists(_areaMetricsPath) ||
+            if (!File.Exists(_areaProgressPath) ||
                 !File.Exists(_screenOrderPath) ||
                 !File.Exists(_statePath))
             {
@@ -106,9 +92,9 @@ namespace JKMetricsLite
             try
             {
                 ResetStats();
-                LoadAreaMetrics();
+                LoadAreaProgress();
                 LoadScreenOrder();
-                LoadScreenTransitions();
+                LoadScreenMetrics();
                 LoadState();
 
                 _attempt = currentAttempt.HasValue
@@ -124,9 +110,9 @@ namespace JKMetricsLite
             }
         }
 
-        private void LoadAreaMetrics()
+        private void LoadAreaProgress()
         {
-            List<Dictionary<string, string>> rows = ReadTsvRows(_areaMetricsPath);
+            List<Dictionary<string, string>> rows = ReadTsvRows(_areaProgressPath);
 
             for (int i = 0; i < rows.Count; i++)
             {
@@ -204,9 +190,9 @@ namespace JKMetricsLite
             }
         }
 
-        private void LoadScreenTransitions()
+        private void LoadScreenMetrics()
         {
-            Dictionary<string, string> row = ReadLastTsvRow(_screenTransitionsPath);
+            Dictionary<string, string> row = ReadLastTsvRow(_screenMetricsPath);
 
             if (row == null)
             {
@@ -220,7 +206,6 @@ namespace JKMetricsLite
                 screen <= MaxScreen)
             {
                 _lastScreen = screen;
-                _lastTransitionScreen = screen;
             }
         }
 
@@ -239,16 +224,6 @@ namespace JKMetricsLite
             if (int.TryParse(GetTsvValue(row, "attempt"), out savedAttempt))
             {
                 _attempt = savedAttempt;
-            }
-
-            long elapsedMilliseconds;
-
-            if (long.TryParse(
-                GetTsvValue(row, "elapsed_ms"),
-                out elapsedMilliseconds
-            ))
-            {
-                _totalFrames = MillisecondsToFrames(elapsedMilliseconds);
             }
         }
 

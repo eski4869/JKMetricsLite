@@ -7,7 +7,7 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
-        private void WriteAreaMetricsTsv()
+        private void WriteAreaProgressTsv()
         {
             var sb = new StringBuilder();
             sb.AppendLine(
@@ -34,7 +34,7 @@ namespace JKMetricsLite
                 );
             }
 
-            File.WriteAllText(_areaMetricsPath, sb.ToString(), Encoding.UTF8);
+            File.WriteAllText(_areaProgressPath, sb.ToString(), Encoding.UTF8);
         }
 
         private Dictionary<string, string> BuildAreaIndexMap()
@@ -90,13 +90,12 @@ namespace JKMetricsLite
 
                 var sb = new StringBuilder();
                 sb.AppendLine(
-                    "attempt\telapsed_ms\t" +
+                    "attempt\t" +
                     "current_area_order\tcurrent_screen_order\t" +
                     "pb_area_order\tpb_screen_order"
                 );
                 sb.AppendLine(
                     (_attempt.HasValue ? _attempt.Value.ToString() : "UNKNOWN") + "\t" +
-                    FramesToMilliseconds(_totalFrames) + "\t" +
                     Math.Max(0, currentAreaOrder) + "\t" +
                     Math.Max(0, currentScreenOrder) + "\t" +
                     Math.Max(0, _pbAreaIndex) + "\t" +
@@ -185,21 +184,16 @@ namespace JKMetricsLite
             }
         }
 
-        private void AppendScreenTransitionTsv()
+        private void AppendScreenMetricTsv()
         {
             if (_lastScreen < MinScreen || _lastScreen > MaxScreen)
             {
                 return;
             }
 
-            if (_lastTransitionScreen == _lastScreen)
-            {
-                return;
-            }
-
             try
             {
-                bool exists = File.Exists(_screenTransitionsPath);
+                bool exists = File.Exists(_screenMetricsPath);
 
                 var sb = new StringBuilder();
 
@@ -213,12 +207,11 @@ namespace JKMetricsLite
                     _lastScreen
                 );
 
-                File.AppendAllText(_screenTransitionsPath, sb.ToString(), Encoding.UTF8);
-                _lastTransitionScreen = _lastScreen;
+                File.AppendAllText(_screenMetricsPath, sb.ToString(), Encoding.UTF8);
             }
             catch (Exception ex)
             {
-                LogError("Append screen transition TSV", ex);
+                LogError("Append screen metrics TSV", ex);
             }
         }
 
