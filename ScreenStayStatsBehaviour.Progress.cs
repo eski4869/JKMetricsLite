@@ -54,6 +54,7 @@ namespace JKMetricsLite
             }
 
             RecalculatePb();
+            LogAttemptOutput("area-exclusion", true, false, true);
             WriteOutputFiles();
             WriteScreenOrderTsv(false);
         }
@@ -101,6 +102,7 @@ namespace JKMetricsLite
             {
                 _areaScreenAppearedOrder[areaName].Add(screen);
                 _screenOrderDirty = true;
+                LogAttemptOutput("new-screen-order", false, false, true);
                 WriteScreenOrderTsv(false);
             }
         }

@@ -661,6 +661,7 @@ namespace JKMetricsLite
             }
 
             TrackCurrentFrame();
+            LogAttemptOutput("initialize", true, false, true);
             WriteOutputFiles();
             WriteScreenOrderTsv(!loaded);
         }
@@ -847,6 +848,7 @@ namespace JKMetricsLite
                 ", screen=" + _lastScreen +
                 ", area=" + _lastArea
             );
+            LogAttemptOutput("flush", true, true, true);
             WriteOutputFiles();
             WriteScreenOrderTsv(false);
             AppendScreenMetricTsv();
@@ -906,6 +908,7 @@ namespace JKMetricsLite
             if (_outputCounter >= OutputIntervalFrames)
             {
                 _outputCounter = 0;
+                LogAttemptOutput("interval", true, true, false);
                 WriteOutputFiles();
                 AppendScreenMetricTsv();
             }
@@ -915,6 +918,7 @@ namespace JKMetricsLite
             if (_screenOrderSaveCounter >= ScreenOrderSaveIntervalFrames)
             {
                 _screenOrderSaveCounter = 0;
+                LogAttemptOutput("screen-order-interval", false, false, true);
                 WriteScreenOrderTsv(false);
             }
         }
@@ -923,6 +927,25 @@ namespace JKMetricsLite
         {
             WriteAreaProgressTsv();
             WriteStateTsv();
+        }
+
+        private void LogAttemptOutput(
+            string reason,
+            bool writesProgress,
+            bool writesScreenMetric,
+            bool writesScreenOrder
+        )
+        {
+            JKMetricsDebugLog.Write(
+                "Attempt output: reason=" + reason +
+                ", frames=" + _totalFrames +
+                ", screen=" + _lastScreen +
+                ", area=" + _lastArea +
+                ", progress=" + writesProgress +
+                ", screenMetric=" + writesScreenMetric +
+                ", screenOrder=" + writesScreenOrder +
+                ", screenOrderDirty=" + _screenOrderDirty
+            );
         }
     }
 }
