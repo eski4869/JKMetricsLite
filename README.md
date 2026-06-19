@@ -23,11 +23,16 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
 
 ```xml
 <MetricsPreferences>
-  <IsEnabled>true</IsEnabled>
+  <AttemptMetricsEnabled>true</AttemptMetricsEnabled>
+  <TotalMetricsEnabled>true</TotalMetricsEnabled>
   <OutputDir></OutputDir>
   <AttemptBackupGenerations>1</AttemptBackupGenerations>
 </MetricsPreferences>
 ```
+
+`AttemptMetricsEnabled` controls per-attempt run metrics such as area splits, duration, PB progress, and progress graph data.
+
+`TotalMetricsEnabled` controls long-term total metrics used by `recap.html`.
 
 Leave `OutputDir` empty to use the default `JKMetricsLite` folder in the same folder as the mod. Relative paths are based on this mod's folder. Absolute paths are also supported.
 

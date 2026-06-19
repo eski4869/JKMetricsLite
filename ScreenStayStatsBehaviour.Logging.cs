@@ -6,6 +6,25 @@ using System.Text;
 
 namespace JKMetricsLite
 {
+    internal static class JKMetricsDebugLog
+    {
+        internal static void Write(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+            {
+                return;
+            }
+
+            try
+            {
+                JumpKing.Program.crashLog.AddErrorMessage("[JKMetricsLite] " + message);
+            }
+            catch
+            {
+            }
+        }
+    }
+
     public partial class ScreenStayStatsBehaviour
     {
         private static readonly HashSet<string> _loggedErrorContexts = new HashSet<string>();

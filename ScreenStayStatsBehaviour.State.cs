@@ -18,7 +18,6 @@ namespace JKMetricsLite
             _totalFrames = 0;
             _outputCounter = 0;
             _screenOrderSaveCounter = 0;
-            _totalStatsCounter = 0;
             _lastScreen = -1;
             _lastArea = "Unknown";
             _screenOrderDirty = false;
@@ -47,7 +46,7 @@ namespace JKMetricsLite
 
         private void SyncLoadedElapsedWithGameTime()
         {
-            TimeSpan? currentRunTime = TryGetCurrentRunTime();
+            TimeSpan? currentRunTime = PlayerStatsReader.TryGetCurrentRunTime();
 
             if (!currentRunTime.HasValue)
             {

@@ -20,19 +20,23 @@ namespace JKMetricsLite
     {
         private const string SettingsFileName = "eski4869.JKMetricsLite.Settings.xml";
 
-        private static ScreenStayStatsBehaviour _registeredBehaviour;
+        private static ScreenStayStatsBehaviour _registeredAttemptBehaviour;
+        private static TotalMetricsBehaviour _registeredTotalBehaviour;
         private static MetricsPreferences _preferences;
         private static string _settingsPath;
         private static bool _settingsDirty;
         private static bool _processExitRegistered;
-        private static bool _isLevelRunning;
 
         [BeforeLevelLoad]
         public static void BeforeLevelLoad()
         {
             EnsurePreferencesLoaded();
+            JKMetricsDebugLog.Write(
+                "BeforeLevelLoad: attempt=" + _preferences.AttemptMetricsEnabled +
+                ", total=" + _preferences.TotalMetricsEnabled
+            );
 
-            if (_preferences.IsEnabled)
+            if (AreAnyMetricsEnabled())
             {
                 ScreenStayStatsBehaviour.PrepareForLevelLoad();
             }
@@ -46,77 +50,121 @@ namespace JKMetricsLite
         public static void OnLevelStart()
         {
             EnsurePreferencesLoaded();
-            _isLevelRunning = true;
-
-            if (!_preferences.IsEnabled)
-            {
-                UnregisterMetricsBehaviour();
-                return;
-            }
-
-            RegisterMetricsBehaviour();
+            JKMetricsDebugLog.Write(
+                "OnLevelStart: attempt=" + _preferences.AttemptMetricsEnabled +
+                ", total=" + _preferences.TotalMetricsEnabled
+            );
+            RegisterMetricsBehaviours();
         }
 
-        private static void RegisterMetricsBehaviour()
+        private static void RegisterMetricsBehaviours()
         {
             PlayerEntity player = EntityManager.instance.Find<PlayerEntity>();
 
             if (player == null)
             {
+                JKMetricsDebugLog.Write("RegisterMetricsBehaviours: player not found");
                 return;
             }
 
+            RegisterAttemptMetricsBehaviour(player);
+            RegisterTotalMetricsBehaviour(player);
+        }
+
+        private static void RegisterAttemptMetricsBehaviour(PlayerEntity player)
+        {
             ScreenStayStatsBehaviour existingBehaviour = player.GetComponent<ScreenStayStatsBehaviour>();
 
             if (existingBehaviour != null)
             {
-                _registeredBehaviour = existingBehaviour;
-                _registeredBehaviour.InitializeForLevelStart();
+                _registeredAttemptBehaviour = existingBehaviour;
+                _registeredAttemptBehaviour.Enabled = _preferences.AttemptMetricsEnabled;
+                JKMetricsDebugLog.Write(
+                    "Attempt component reused: enabled=" + _registeredAttemptBehaviour.Enabled
+                );
                 return;
             }
 
-            _registeredBehaviour = new ScreenStayStatsBehaviour();
-            player.AddComponents(new Component[] { _registeredBehaviour });
+            _registeredAttemptBehaviour = new ScreenStayStatsBehaviour();
+            player.AddComponents(
+                _preferences.AttemptMetricsEnabled,
+                new Component[] { _registeredAttemptBehaviour }
+            );
+            JKMetricsDebugLog.Write(
+                "Attempt component added: enabled=" + _preferences.AttemptMetricsEnabled
+            );
         }
 
-        private static void UnregisterMetricsBehaviour()
+        private static void RegisterTotalMetricsBehaviour(PlayerEntity player)
         {
-            _registeredBehaviour = null;
+            TotalMetricsBehaviour existingBehaviour = player.GetComponent<TotalMetricsBehaviour>();
+
+            if (existingBehaviour != null)
+            {
+                _registeredTotalBehaviour = existingBehaviour;
+                _registeredTotalBehaviour.Enabled = _preferences.TotalMetricsEnabled;
+                JKMetricsDebugLog.Write(
+                    "Total component reused: enabled=" + _registeredTotalBehaviour.Enabled
+                );
+                return;
+            }
+
+            _registeredTotalBehaviour = new TotalMetricsBehaviour();
+            player.AddComponents(
+                _preferences.TotalMetricsEnabled,
+                new Component[] { _registeredTotalBehaviour }
+            );
+            JKMetricsDebugLog.Write(
+                "Total component added: enabled=" + _preferences.TotalMetricsEnabled
+            );
+        }
+
+        internal static void ClearRegisteredAttemptMetricsBehaviour(ScreenStayStatsBehaviour behaviour)
+        {
+            if (ReferenceEquals(_registeredAttemptBehaviour, behaviour))
+            {
+                _registeredAttemptBehaviour = null;
+            }
+        }
+
+        internal static void ClearRegisteredTotalMetricsBehaviour(TotalMetricsBehaviour behaviour)
+        {
+            if (ReferenceEquals(_registeredTotalBehaviour, behaviour))
+            {
+                _registeredTotalBehaviour = null;
+            }
         }
 
         [OnLevelEnd]
         public static void OnLevelEnd()
         {
+            JKMetricsDebugLog.Write("OnLevelEnd");
             SaveSettingsIfDirty();
-
-            if (IsMetricsRuntimeActive())
-            {
-                ScreenStayStatsBehaviour.FlushOnLevelEnd();
-            }
-
-            _isLevelRunning = false;
-            UnregisterMetricsBehaviour();
+            ScreenStayStatsBehaviour.FlushOnLevelEnd();
+            TotalMetricsBehaviour.FlushOnLevelEnd();
+            _registeredAttemptBehaviour = null;
+            _registeredTotalBehaviour = null;
         }
 
         [OnLevelUnload]
         public static void OnLevelUnload()
         {
+            JKMetricsDebugLog.Write("OnLevelUnload");
             SaveSettingsIfDirty();
-
-            if (IsMetricsRuntimeActive())
-            {
-                ScreenStayStatsBehaviour.FlushOnLevelUnload();
-            }
-
-            _isLevelRunning = false;
-            UnregisterMetricsBehaviour();
         }
 
         [PauseMenuItemSetting]
         [MainMenuItemSetting]
-        public static MetricsToggle MetricsMenu(object factory, GuiFormat format)
+        public static AttemptMetricsToggle AttemptMetricsMenu(object factory, GuiFormat format)
         {
-            return new MetricsToggle();
+            return new AttemptMetricsToggle();
+        }
+
+        [PauseMenuItemSetting]
+        [MainMenuItemSetting]
+        public static TotalMetricsToggle TotalMetricsMenu(object factory, GuiFormat format)
+        {
+            return new TotalMetricsToggle();
         }
 
         [PauseMenuItemSetting]
@@ -125,38 +173,76 @@ namespace JKMetricsLite
             return new CurrentAreaMetricsToggle();
         }
 
-        public static bool IsMetricsEnabled()
+        public static bool IsAttemptMetricsEnabled()
         {
             EnsurePreferencesLoaded();
-            return _preferences.IsEnabled;
+            return _preferences.AttemptMetricsEnabled;
         }
 
-        internal static bool IsMetricsRuntimeActive()
+        public static bool IsTotalMetricsEnabled()
         {
             EnsurePreferencesLoaded();
-            return _preferences.IsEnabled && _isLevelRunning;
+            return _preferences.TotalMetricsEnabled;
         }
 
-        public static void SetMetricsEnabled(bool isEnabled)
+        internal static bool AreAnyMetricsEnabled()
+        {
+            EnsurePreferencesLoaded();
+            return _preferences.AttemptMetricsEnabled || _preferences.TotalMetricsEnabled;
+        }
+
+        public static void SetAttemptMetricsEnabled(bool isEnabled)
         {
             EnsurePreferencesLoaded();
 
-            if (_preferences.IsEnabled == isEnabled)
+            if (_preferences.AttemptMetricsEnabled == isEnabled)
             {
                 return;
             }
 
-            _preferences.IsEnabled = isEnabled;
+            _preferences.AttemptMetricsEnabled = isEnabled;
             _settingsDirty = true;
+            JKMetricsDebugLog.Write("Attempt toggle: enabled=" + isEnabled);
+            ApplyAttemptMetricsEnabledToRegisteredBehaviour();
+        }
 
-            if (isEnabled && _isLevelRunning)
+        public static void SetTotalMetricsEnabled(bool isEnabled)
+        {
+            EnsurePreferencesLoaded();
+
+            if (_preferences.TotalMetricsEnabled == isEnabled)
             {
-                RegisterMetricsBehaviour();
+                return;
             }
-            else
+
+            _preferences.TotalMetricsEnabled = isEnabled;
+            _settingsDirty = true;
+            JKMetricsDebugLog.Write("Total toggle: enabled=" + isEnabled);
+            ApplyTotalMetricsEnabledToRegisteredBehaviour();
+        }
+
+        private static void ApplyAttemptMetricsEnabledToRegisteredBehaviour()
+        {
+            if (_registeredAttemptBehaviour == null ||
+                _registeredAttemptBehaviour.gameObject == null ||
+                !_registeredAttemptBehaviour.gameObject.IsAlive)
             {
-                UnregisterMetricsBehaviour();
+                return;
             }
+
+            _registeredAttemptBehaviour.Enabled = _preferences.AttemptMetricsEnabled;
+        }
+
+        private static void ApplyTotalMetricsEnabledToRegisteredBehaviour()
+        {
+            if (_registeredTotalBehaviour == null ||
+                _registeredTotalBehaviour.gameObject == null ||
+                !_registeredTotalBehaviour.gameObject.IsAlive)
+            {
+                return;
+            }
+
+            _registeredTotalBehaviour.Enabled = _preferences.TotalMetricsEnabled;
         }
 
         internal static string GetConfiguredOutputDir()
@@ -270,20 +356,37 @@ namespace JKMetricsLite
         }
     }
 
-    public class MetricsToggle : ITextToggle
+    public class AttemptMetricsToggle : ITextToggle
     {
-        public MetricsToggle() : base(JKMetricsLiteMod.IsMetricsEnabled())
+        public AttemptMetricsToggle() : base(JKMetricsLiteMod.IsAttemptMetricsEnabled())
         {
         }
 
         protected override string GetName()
         {
-            return "JK Metrics Lite";
+            return "Attempt Metrics";
         }
 
         protected override void OnToggle()
         {
-            JKMetricsLiteMod.SetMetricsEnabled(toggle);
+            JKMetricsLiteMod.SetAttemptMetricsEnabled(toggle);
+        }
+    }
+
+    public class TotalMetricsToggle : ITextToggle
+    {
+        public TotalMetricsToggle() : base(JKMetricsLiteMod.IsTotalMetricsEnabled())
+        {
+        }
+
+        protected override string GetName()
+        {
+            return "Total Metrics";
+        }
+
+        protected override void OnToggle()
+        {
+            JKMetricsLiteMod.SetTotalMetricsEnabled(toggle);
         }
     }
 
@@ -306,7 +409,8 @@ namespace JKMetricsLite
 
         protected override bool CanChange()
         {
-            return ScreenStayStatsBehaviour.CanChangeCurrentAreaMetricsExclusion();
+            return JKMetricsLiteMod.IsAttemptMetricsEnabled() &&
+                ScreenStayStatsBehaviour.CanChangeCurrentAreaMetricsExclusion();
         }
 
         protected override void OnToggle()
@@ -317,7 +421,26 @@ namespace JKMetricsLite
 
     public class MetricsPreferences
     {
-        public bool IsEnabled { get; set; } = true;
+        public bool IsEnabled
+        {
+            get
+            {
+                return AttemptMetricsEnabled && TotalMetricsEnabled;
+            }
+            set
+            {
+                AttemptMetricsEnabled = value;
+                TotalMetricsEnabled = value;
+            }
+        }
+
+        public bool ShouldSerializeIsEnabled()
+        {
+            return false;
+        }
+
+        public bool AttemptMetricsEnabled { get; set; } = true;
+        public bool TotalMetricsEnabled { get; set; } = true;
         public string OutputDir { get; set; } = "";
         public int AttemptBackupGenerations { get; set; } = 1;
     }
@@ -328,11 +451,12 @@ namespace JKMetricsLite
         private const int MaxScreen = 169;
         private const int OutputIntervalFrames = 60;
         private const int ScreenOrderSaveIntervalFrames = 3600;
-        private const int TotalStatsIntervalFrames = 3600;
         private const string OutputFolderName = "JKMetricsLite";
 
         private static ScreenStayStatsBehaviour _instance;
         private static bool _processExitRegistered = false;
+        private bool _runtimeInitialized = false;
+        private bool _hasFlushed = false;
 
         private readonly Dictionary<string, int> _areaFrames = new Dictionary<string, int>();
         private readonly Dictionary<string, long> _areaFirstReachedMilliseconds =
@@ -349,7 +473,6 @@ namespace JKMetricsLite
         private string _screenMetricsPath;
         private string _screenOrderPath;
         private string _statePath;
-        private string _totalStatsPath;
         private string _attemptsDir;
         private string _currentAttemptDir;
         private int _attemptBackupGenerations = 1;
@@ -359,7 +482,6 @@ namespace JKMetricsLite
         private int _totalFrames = 0;
         private int _outputCounter = 0;
         private int _screenOrderSaveCounter = 0;
-        private int _totalStatsCounter = 0;
         private int _lastScreen = -1;
         private string _lastArea = "Unknown";
         private bool _screenOrderDirty = false;
@@ -389,8 +511,6 @@ namespace JKMetricsLite
 
         internal static void PrepareForLevelLoad()
         {
-            RegisterProcessExitHandler();
-
             string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
             string outputDir = ResolveOutputDir(
@@ -449,14 +569,60 @@ namespace JKMetricsLite
             return _levelLoadPreparation;
         }
 
-        public ScreenStayStatsBehaviour()
+        internal static string GetPreparedTotalMetricsPath()
         {
-            _instance = this;
-            InitializeForLevelStart();
+            return GetLevelLoadPreparation().TotalStatsPath;
         }
 
-        internal void InitializeForLevelStart()
+        public ScreenStayStatsBehaviour()
         {
+        }
+
+        protected override void OnEnable()
+        {
+            _instance = this;
+            _hasFlushed = false;
+            JKMetricsDebugLog.Write(
+                "Attempt OnEnable: initialized=" + _runtimeInitialized
+            );
+
+            if (!_runtimeInitialized)
+            {
+                InitializeForLevelStart();
+            }
+        }
+
+        protected override void OnDisable()
+        {
+            JKMetricsDebugLog.Write(
+                "Attempt OnDisable: initialized=" + _runtimeInitialized +
+                ", flushed=" + _hasFlushed
+            );
+            FlushForStop();
+        }
+
+        protected override void OnOwnerDestroy()
+        {
+            JKMetricsDebugLog.Write(
+                "Attempt OnOwnerDestroy: initialized=" + _runtimeInitialized +
+                ", flushed=" + _hasFlushed
+            );
+            FlushForStop();
+
+            if (ReferenceEquals(_instance, this))
+            {
+                _instance = null;
+            }
+
+            JKMetricsLiteMod.ClearRegisteredAttemptMetricsBehaviour(this);
+        }
+
+        private void InitializeForLevelStart()
+        {
+            _runtimeInitialized = true;
+            RegisterProcessExitHandler();
+            JKMetricsDebugLog.Write("Attempt InitializeForLevelStart");
+
             LevelLoadPreparation preparation = GetLevelLoadPreparation();
 
             _outputDir = preparation.OutputDir;
@@ -468,14 +634,18 @@ namespace JKMetricsLite
             _screenMetricsPath = preparation.ScreenMetricsPath;
             _screenOrderPath = preparation.ScreenOrderPath;
             _statePath = preparation.StatePath;
-            _totalStatsPath = preparation.TotalStatsPath;
             _attemptBackupGenerations = preparation.AttemptBackupGenerations;
-            _locations = LoadLocations();
+            _hasFlushed = false;
 
-            AppendTotalStatsTsv();
+            _locations = LoadLocations();
 
             int? currentAttempt = TryGetCurrentAttempt();
             bool loaded = LoadRunDataIfSameAttempt(currentAttempt);
+            JKMetricsDebugLog.Write(
+                "Attempt load: currentAttempt=" +
+                (currentAttempt.HasValue ? currentAttempt.Value.ToString() : "null") +
+                ", loaded=" + loaded
+            );
 
             if (loaded)
             {
@@ -643,48 +813,49 @@ namespace JKMetricsLite
 
         public static void FlushOnExit()
         {
-            if (!JKMetricsLiteMod.IsMetricsRuntimeActive())
-            {
-                return;
-            }
-
-            FlushCurrentInstance(false);
+            FlushCurrentInstance();
         }
 
         public static void FlushOnLevelEnd()
         {
-            FlushCurrentInstance(true);
+            FlushCurrentInstance();
         }
 
-        public static void FlushOnLevelUnload()
-        {
-            FlushCurrentInstance(false);
-        }
-
-        private static void FlushCurrentInstance(bool appendActivity)
+        private static void FlushCurrentInstance()
         {
             if (_instance == null)
             {
                 return;
             }
 
-            _instance.WriteOutputFiles();
-            _instance.WriteScreenOrderTsv(false);
-            _instance.AppendScreenMetricTsv();
+            _instance.FlushForStop();
+        }
 
-            if (appendActivity)
+        private void FlushForStop()
+        {
+            if (!_runtimeInitialized || _hasFlushed)
             {
-                _instance.AppendTotalStatsTsv();
+                JKMetricsDebugLog.Write(
+                    "Attempt FlushForStop skipped: initialized=" + _runtimeInitialized +
+                    ", flushed=" + _hasFlushed
+                );
+                return;
             }
+
+            JKMetricsDebugLog.Write(
+                "Attempt FlushForStop: frames=" + _totalFrames +
+                ", screen=" + _lastScreen +
+                ", area=" + _lastArea
+            );
+            WriteOutputFiles();
+            WriteScreenOrderTsv(false);
+            AppendScreenMetricTsv();
+
+            _hasFlushed = true;
         }
 
         protected override void Update(float p_delta)
         {
-            if (!JKMetricsLiteMod.IsMetricsRuntimeActive())
-            {
-                return;
-            }
-
             TrackCurrentFrame();
         }
 
@@ -745,14 +916,6 @@ namespace JKMetricsLite
             {
                 _screenOrderSaveCounter = 0;
                 WriteScreenOrderTsv(false);
-            }
-
-            _totalStatsCounter++;
-
-            if (_totalStatsCounter >= TotalStatsIntervalFrames)
-            {
-                _totalStatsCounter = 0;
-                AppendTotalStatsTsv();
             }
         }
 

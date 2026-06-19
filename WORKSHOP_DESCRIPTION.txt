@@ -31,6 +31,8 @@ If your Steam library is installed somewhere else, the first part of the path wi
 
 To change the output folder, edit OutputDir in eski4869.JKMetricsLite.Settings.xml. Leave it empty to use the default location. Restart the game after editing the settings file.
 
+The mod menu has separate toggles for Attempt Metrics and Total Metrics.
+
 AttemptBackupGenerations controls how many previous attempt folders are kept under raw_data/attempts. The default is 1, and values are capped at 10.
 
 Existing overlay HTML files are not overwritten. Delete an HTML file and restart the game to regenerate it.
