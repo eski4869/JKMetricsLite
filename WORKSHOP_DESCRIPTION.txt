@@ -31,7 +31,7 @@ If your Steam library is installed somewhere else, the first part of the path wi
 
 To change the output folder, edit OutputDir in eski4869.JKMetricsLite.Settings.xml. Leave it empty to use the default location. Restart the game after editing the settings file.
 
-The mod menu has separate toggles for Attempt Metrics and Total Metrics.
+The mod menu has separate toggles for Attempt Metrics, Total Metrics, and 10 Times Metrics.
 
 AttemptBackupGenerations controls how many previous attempt folders are kept under raw_data/attempts. The default is 1, and values are capped at 10.
 
@@ -76,7 +76,10 @@ current_state.tsv
 attempt	elapsed_ms	screen	area_name	current_area_order	current_screen_order	pb_area_order	pb_screen_order	screen_order_revision
 
 total_metrics.tsv
-sampled_at	total_frames	total_jumps	total_falls[/code]
+sampled_at	total_frames	total_jumps	total_falls
+
+ten_times_metrics.tsv
+attempt	map_name	clear_time_ms[/code]
 
 [b]OBS Views[/b]
 
@@ -105,6 +108,18 @@ Long-term metrics are accumulated across play sessions and are not reset with ru
 Open local/recap.html directly in a browser and select raw_data/total_metrics.tsv to view jump-based recaps, including total jumps/falls, active days, streaks, best day/month/weekday/hour, hourly heatmaps, and monthly jumps/falls.
 
 The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
+
+[hr]
+
+[h2]10 Times Metrics[/h2]
+
+10 Times metrics keep the latest clear-time records for categories where repeated clears are useful, such as 10 Times or All Maps style practice.
+
+[list]
+[*][b]raw_data/ten_times_metrics.tsv[/b] - Latest clear-time records with attempt, map name, and clear time.
+[/list]
+
+Open local/ten_times_metrics.html directly in a browser and select raw_data/ten_times_metrics.tsv to view recent clears, total time, best time, average time, and slowest time.
 
 [hr]
 

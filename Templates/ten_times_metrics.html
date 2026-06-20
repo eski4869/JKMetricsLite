@@ -1,0 +1,400 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>10 Times Metrics</title>
+  <style>
+    :root {
+      --bg: #101216;
+      --panel: #1a1d23;
+      --line: #333943;
+      --text: #f5f0df;
+      --muted: #a5acb7;
+      --accent: #7ab7cf;
+      --good: #438f6e;
+      --warn: #c99a35;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Meiryo", sans-serif;
+    }
+
+    .shell {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 36px;
+      line-height: 1.1;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    input[type="file"] {
+      max-width: 300px;
+      color: var(--muted);
+    }
+
+    button {
+      height: 34px;
+      border: 1px solid var(--line);
+      background: #242932;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .status.error,
+    .status.loading {
+      color: #e74c3c;
+      font-weight: 700;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .card,
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .card {
+      padding: 12px;
+      min-height: 78px;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .metric {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .panel {
+      padding: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    td {
+      font-size: 15px;
+    }
+
+    .time {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .attempt {
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .empty {
+      padding: 22px 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 640px) {
+      header {
+        flex-direction: column;
+      }
+
+      .controls {
+        align-items: stretch;
+      }
+
+      .control-row {
+        justify-content: flex-start;
+      }
+
+      .cards {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <h1>10 Times Metrics</h1>
+      </div>
+      <div class="controls">
+        <div class="control-row">
+          <input id="fileInput" type="file" accept=".tsv,.txt,text/tab-separated-values,text/plain">
+          <button id="reloadFile" type="button">Reload</button>
+        </div>
+        <div id="status" class="status error">Choose ten_times_metrics.tsv to render your clears.</div>
+      </div>
+    </header>
+
+    <section class="cards">
+      <div class="card">
+        <div class="label">Total</div>
+        <div id="totalTime" class="metric">-</div>
+      </div>
+      <div class="card">
+        <div class="label">Best</div>
+        <div id="bestTime" class="metric">-</div>
+      </div>
+      <div class="card">
+        <div class="label">Average</div>
+        <div id="averageTime" class="metric">-</div>
+      </div>
+      <div class="card">
+        <div class="label">Slowest</div>
+        <div id="slowestTime" class="metric">-</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Clears</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 44%;">Map</th>
+            <th style="width: 28%;">Clear Time</th>
+            <th style="width: 28%; text-align: right;">Attempt</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr>
+            <td class="empty" colspan="3">No clear records loaded.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const reloadFile = document.getElementById("reloadFile");
+    const statusEl = document.getElementById("status");
+    const rowsEl = document.getElementById("rows");
+    const totalTimeEl = document.getElementById("totalTime");
+    const bestTimeEl = document.getElementById("bestTime");
+    const averageTimeEl = document.getElementById("averageTime");
+    const slowestTimeEl = document.getElementById("slowestTime");
+
+    let selectedFile = null;
+
+    function setStatus(text, kind) {
+      statusEl.textContent = text;
+      statusEl.className = "status" + (kind ? " " + kind : "");
+    }
+
+    function formatTime(ms) {
+      if (!Number.isFinite(ms) || ms < 0) {
+        return "-";
+      }
+
+      const totalMilliseconds = Math.round(ms);
+      const minutes = Math.floor(totalMilliseconds / 60000);
+      const seconds = Math.floor((totalMilliseconds % 60000) / 1000);
+      const milliseconds = totalMilliseconds % 1000;
+
+      return minutes + "m " +
+        String(seconds).padStart(2, "0") + "s " +
+        String(milliseconds).padStart(3, "0") + "ms";
+    }
+
+    function parseRows(text) {
+      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+
+      if (lines.length <= 1) {
+        return [];
+      }
+
+      const header = lines[0].split("\t");
+      const attemptIndex = header.indexOf("attempt");
+      const mapIndex = header.indexOf("map_name");
+      const clearTimeIndex = header.indexOf("clear_time_ms");
+
+      if (attemptIndex < 0 || mapIndex < 0 || clearTimeIndex < 0) {
+        throw new Error("Invalid TSV header. Expected: attempt, map_name, clear_time_ms.");
+      }
+
+      const records = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const columns = lines[i].split("\t");
+        const clearTime = Number(columns[clearTimeIndex]);
+
+        if (!Number.isFinite(clearTime)) {
+          continue;
+        }
+
+        records.push({
+          attempt: columns[attemptIndex] || "",
+          mapName: columns[mapIndex] || "",
+          clearTime
+        });
+      }
+
+      return records;
+    }
+
+    function render(records) {
+      if (records.length === 0) {
+        totalTimeEl.textContent = "-";
+        bestTimeEl.textContent = "-";
+        averageTimeEl.textContent = "-";
+        slowestTimeEl.textContent = "-";
+        rowsEl.innerHTML = '<tr><td class="empty" colspan="3">No clear records loaded.</td></tr>';
+        return;
+      }
+
+      const times = records.map(record => record.clearTime);
+      const total = times.reduce((sum, value) => sum + value, 0);
+      const best = Math.min(...times);
+      const slowest = Math.max(...times);
+
+      totalTimeEl.textContent = formatTime(total);
+      bestTimeEl.textContent = formatTime(best);
+      averageTimeEl.textContent = formatTime(total / records.length);
+      slowestTimeEl.textContent = formatTime(slowest);
+
+      rowsEl.innerHTML = "";
+
+      for (const record of records) {
+        const tr = document.createElement("tr");
+
+        const mapTd = document.createElement("td");
+        mapTd.textContent = record.mapName || "-";
+        mapTd.title = record.mapName || "-";
+
+        const timeTd = document.createElement("td");
+        timeTd.className = "time";
+        timeTd.textContent = formatTime(record.clearTime);
+
+        const attemptTd = document.createElement("td");
+        attemptTd.className = "attempt";
+        attemptTd.textContent = record.attempt || "-";
+
+        tr.appendChild(mapTd);
+        tr.appendChild(timeTd);
+        tr.appendChild(attemptTd);
+        rowsEl.appendChild(tr);
+      }
+    }
+
+    function readSelectedFile() {
+      if (!selectedFile) {
+        setStatus("Choose ten_times_metrics.tsv to render your clears.", "error");
+        render([]);
+        return;
+      }
+
+      setStatus("Loading " + selectedFile.name + "...", "loading");
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          const records = parseRows(String(reader.result || ""));
+          render(records);
+          setStatus(selectedFile.name + ": " + records.length + " clears loaded.", "");
+        } catch (error) {
+          render([]);
+          setStatus(error.message, "error");
+        }
+      };
+
+      reader.onerror = () => {
+        render([]);
+        setStatus("Could not read " + selectedFile.name + ".", "error");
+      };
+
+      reader.readAsText(selectedFile);
+    }
+
+    fileInput.addEventListener("change", () => {
+      selectedFile = fileInput.files && fileInput.files.length > 0
+        ? fileInput.files[0]
+        : null;
+      readSelectedFile();
+    });
+
+    reloadFile.addEventListener("click", readSelectedFile);
+  </script>
+</body>
+</html>

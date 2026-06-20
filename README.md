@@ -25,6 +25,7 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
 <MetricsPreferences>
   <AttemptMetricsEnabled>true</AttemptMetricsEnabled>
   <TotalMetricsEnabled>true</TotalMetricsEnabled>
+  <TenTimesMetricsEnabled>true</TenTimesMetricsEnabled>
   <OutputDir></OutputDir>
   <AttemptBackupGenerations>1</AttemptBackupGenerations>
 </MetricsPreferences>
@@ -33,6 +34,8 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
 `AttemptMetricsEnabled` controls per-attempt run metrics such as area splits, duration, PB progress, and progress graph data.
 
 `TotalMetricsEnabled` controls long-term total metrics used by `recap.html`.
+
+`TenTimesMetricsEnabled` controls 10 Times clear-time metrics used by `ten_times_metrics.html`.
 
 Leave `OutputDir` empty to use the default `JKMetricsLite` folder in the same folder as the mod. Relative paths are based on this mod's folder. Absolute paths are also supported.
 
@@ -54,7 +57,8 @@ JKMetricsLite/
 |   |       |-- screen_order.tsv
 |   |       |-- screen_metrics.tsv
 |   |       `-- current_state.tsv
-|   `-- total_metrics.tsv
+|   |-- total_metrics.tsv
+|   `-- ten_times_metrics.tsv
 |-- obs/
 |   |-- area_name_splits.html
 |   |-- area_number_splits.html
@@ -62,7 +66,8 @@ JKMetricsLite/
 |   |-- area_number_splits_speedrun.html
 |   `-- progress_graph.html
 |-- local/
-|   `-- recap.html
+|   |-- recap.html
+|   `-- ten_times_metrics.html
 `-- error.log
 ```
 
@@ -169,6 +174,22 @@ Open `local/recap.html` directly in a browser and select `raw_data/total_metrics
 The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
 
 <img width="661" height="579" alt="image" src="https://github.com/user-attachments/assets/99ae0f5a-647a-4e57-9f21-52c9dc95011c" />
+
+## 10 Times Metrics
+
+10 Times metrics keep the latest clear-time records for categories where repeated clears are useful, such as 10 Times or All Maps style practice.
+
+| Type | File | Key | Values | Update timing |
+| --- | --- | --- | --- | --- |
+| 10 Times Metrics | `raw_data/ten_times_metrics.tsv` | Attempt | Map name and clear time | Rewritten on clear, keeping up to 10 records. |
+
+`raw_data/ten_times_metrics.tsv`
+
+```text
+attempt	map_name	clear_time_ms
+```
+
+Open `local/ten_times_metrics.html` directly in a browser and select `raw_data/ten_times_metrics.tsv` to view recent clears, total time, best time, average time, and slowest time.
 
 
 ## Area and PB Logic

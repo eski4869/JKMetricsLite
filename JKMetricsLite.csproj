@@ -71,6 +71,7 @@
     <EmbeddedResource Include="Templates\area_number_splits_speedrun.html" />
     <EmbeddedResource Include="Templates\progress_graph.html" />
     <EmbeddedResource Include="Templates\recap.html" />
+    <EmbeddedResource Include="Templates\ten_times_metrics.html" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
