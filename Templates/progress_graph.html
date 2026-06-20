@@ -34,12 +34,23 @@
 const screenMetricsFilePath = "../raw_data/attempts/current/screen_metrics.tsv";
 const areaFilePath = "../raw_data/attempts/current/area_progress.tsv";
 const screenOrderFilePath = "../raw_data/attempts/current/screen_order.tsv";
+const stateFilePath = "../raw_data/attempts/current/current_state.tsv";
 
 const maxPoints = 1500;
-let cachedAreaText = "";
+let cachedAreaLayoutSignature = "";
 let cachedScreenOrderText = "";
 let cachedScreenToProgress = new Map();
 let cachedMaxProgress = 0;
+let cachedPoints = [];
+let lastAttempt = "";
+let lastScreenOrderRevision = null;
+let lastPointKey = "";
+let hasFullRebuild = false;
+
+async function fetchText(path) {
+  const res = await fetch(path + "?t=" + Date.now());
+  return await res.text();
+}
 
 function parseTsv(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -96,53 +107,109 @@ function getRecentLines(text, maxLines) {
   return text.slice(start, end).split(/\r?\n/).filter(line => line !== "");
 }
 
+function buildAreaLayoutSignature(areaRows) {
+  return areaRows
+    .filter(row => {
+      const areaName = row.area_name || "";
+      return areaName !== "" && areaName !== "Unknown";
+    })
+    .map(row => {
+      const areaName = row.area_name || "";
+      const isExcluded = row.is_excluded === "1" ? "1" : "0";
+      return areaName + "\t" + isExcluded;
+    })
+    .join("\n");
+}
+
 async function loadScreenMetrics() {
-  const screenToProgress = await loadScreenToProgressMap();
-  const res = await fetch(screenMetricsFilePath + "?t=" + Date.now());
-  const text = await res.text();
+  await loadScreenToProgressMap();
+  const text = await fetchText(screenMetricsFilePath);
   const recentLines = getRecentLines(text, maxPoints);
 
   const points = recentLines.map(line => {
-    const tabIndex = line.indexOf("\t");
+    const cols = line.split("\t");
 
-    if (tabIndex <= 0) {
+    if (cols.length < 2) {
       return null;
     }
 
-    const elapsedMs = Number(line.slice(0, tabIndex));
-    const progress = screenToProgress.get(Number(line.slice(tabIndex + 1)));
+    const elapsedMs = Number(cols[0]);
+    const screen = Number(cols[1]);
+    const progress = cachedScreenToProgress.get(screen);
 
     if (!progress) {
       return null;
     }
 
-    return {
-      elapsedMs,
-      progressIndex: progress.progressIndex,
-      areaIndex: progress.areaIndex,
-      screenInArea: progress.screenInArea,
-      label: progress.areaIndex + "-" + progress.screenInArea
-    };
+    return buildGraphPoint(elapsedMs, screen, progress);
   }).filter(p =>
     p &&
     Number.isFinite(p.elapsedMs) &&
     Number.isFinite(p.progressIndex)
   );
 
-  return points;
+  cachedPoints = points;
+  return cachedPoints;
+}
+
+function buildGraphPoint(elapsedMs, screen, progress) {
+  return {
+    elapsedMs,
+    screen,
+    progressIndex: progress.progressIndex,
+    areaIndex: progress.areaIndex,
+    screenInArea: progress.screenInArea,
+    label: progress.areaIndex + "-" + progress.screenInArea
+  };
+}
+
+function remapCachedPoints() {
+  cachedPoints = cachedPoints.map(point => {
+    const progress = cachedScreenToProgress.get(point.screen);
+
+    if (!progress) {
+      return null;
+    }
+
+    return buildGraphPoint(point.elapsedMs, point.screen, progress);
+  }).filter(point => point !== null);
+
+  if (cachedPoints.length > maxPoints) {
+    cachedPoints = cachedPoints.slice(-maxPoints);
+  }
+
+  return cachedPoints.length;
+}
+
+async function loadCurrentState() {
+  const text = await fetchText(stateFilePath);
+  const row = parseTsv(text)[0] || {};
+
+  return {
+    attempt: row.attempt || "",
+    elapsedMs: Number(row.elapsed_ms),
+    screen: Number(row.screen),
+    areaName: row.area_name || "",
+    currentAreaOrder: Number(row.current_area_order),
+    currentScreenOrder: Number(row.current_screen_order),
+    screenOrderRevision: Number(row.screen_order_revision) || 0
+  };
 }
 
 async function loadScreenToProgressMap() {
-  const areaRes = await fetch(areaFilePath + "?t=" + Date.now());
-  const screenOrderRes = await fetch(screenOrderFilePath + "?t=" + Date.now());
-  const areaText = await areaRes.text();
-  const screenOrderText = await screenOrderRes.text();
+  const areaText = await fetchText(areaFilePath);
+  const screenOrderText = await fetchText(screenOrderFilePath);
 
-  if (areaText === cachedAreaText && screenOrderText === cachedScreenOrderText) {
+  const areaRows = parseTsv(areaText);
+  const areaLayoutSignature = buildAreaLayoutSignature(areaRows);
+
+  if (
+    areaLayoutSignature === cachedAreaLayoutSignature &&
+    screenOrderText === cachedScreenOrderText
+  ) {
     return cachedScreenToProgress;
   }
 
-  const areaRows = parseTsv(areaText);
   const screenOrderRows = parseTsv(screenOrderText);
   const includedAreas = [];
   const includedAreaSet = new Set();
@@ -200,12 +267,63 @@ async function loadScreenToProgressMap() {
     });
   });
 
-  cachedAreaText = areaText;
+  cachedAreaLayoutSignature = areaLayoutSignature;
   cachedScreenOrderText = screenOrderText;
   cachedScreenToProgress = screenToProgress;
   cachedMaxProgress = Math.max(0, progressIndex - 1);
 
   return cachedScreenToProgress;
+}
+
+function getPointKey(state) {
+  return state.attempt + "|" +
+    state.screenOrderRevision + "|" +
+    state.elapsedMs + "|" +
+    state.screen;
+}
+
+function appendStatePoint(state) {
+  if (!Number.isFinite(state.elapsedMs) ||
+      !Number.isFinite(state.screen) ||
+      state.screen <= 0) {
+    return "invalid-state";
+  }
+
+  const key = getPointKey(state);
+
+  if (key === lastPointKey) {
+    return "same-point";
+  }
+
+  let progress = cachedScreenToProgress.get(state.screen);
+  let result = "known-screen";
+
+  if (!progress) {
+    if (!Number.isFinite(state.currentAreaOrder) ||
+        !Number.isFinite(state.currentScreenOrder) ||
+        state.currentAreaOrder <= 0 ||
+        state.currentScreenOrder <= 0) {
+      return "unknown-screen";
+    }
+
+    cachedMaxProgress++;
+    result = "append-screen";
+    progress = {
+      progressIndex: cachedMaxProgress,
+      areaIndex: state.currentAreaOrder,
+      screenInArea: state.currentScreenOrder
+    };
+    cachedScreenToProgress.set(state.screen, progress);
+  }
+
+  cachedPoints.push(buildGraphPoint(state.elapsedMs, state.screen, progress));
+
+  if (cachedPoints.length > maxPoints) {
+    cachedPoints = cachedPoints.slice(-maxPoints);
+  }
+
+  lastPointKey = key;
+  return result;
 }
 
 function formatRelativeTime(milliseconds) {
@@ -335,16 +453,42 @@ function drawChart(points) {
 }
 
 async function update() {
+  let state = null;
+
   try {
-    const points = await loadScreenMetrics();
-    drawChart(points);
+    state = await loadCurrentState();
+
+    const needsMetricReload =
+      !hasFullRebuild ||
+      state.attempt !== lastAttempt;
+
+    const needsScreenRemap =
+      hasFullRebuild &&
+      state.attempt === lastAttempt &&
+      state.screenOrderRevision !== lastScreenOrderRevision;
+
+    if (needsMetricReload) {
+      await loadScreenMetrics();
+      hasFullRebuild = true;
+      lastAttempt = state.attempt;
+      lastScreenOrderRevision = state.screenOrderRevision;
+      lastPointKey = "";
+    } else if (needsScreenRemap) {
+      await loadScreenToProgressMap();
+      remapCachedPoints();
+      lastScreenOrderRevision = state.screenOrderRevision;
+      lastPointKey = "";
+    }
+
+    appendStatePoint(state);
+    drawChart(cachedPoints);
   } catch (e) {
     const canvas = document.getElementById("chart");
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.font = "18px Cascadia Mono, Consolas, monospace";
     ctx.fillStyle = "white";
-    ctx.fillText("Failed to load screen_metrics.tsv", 20, 40);
+    ctx.fillText("Failed to load progress data", 20, 40);
   }
 }
 

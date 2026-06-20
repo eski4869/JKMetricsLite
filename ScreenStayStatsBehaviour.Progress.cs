@@ -53,9 +53,9 @@ namespace JKMetricsLite
                 return;
             }
 
+            _screenOrderRevision++;
             RecalculatePb();
             WriteOutputFiles();
-            WriteScreenOrderTsv(false);
         }
 
         private bool IsAreaIncludedForMetrics(string areaName)
@@ -74,7 +74,7 @@ namespace JKMetricsLite
 
             if (_totalFrames > 0 || _areaFirstReachedMilliseconds.Count > 0)
             {
-                TimeSpan? currentRunTime = TryGetCurrentRunTime();
+                TimeSpan? currentRunTime = PlayerStatsReader.TryGetCurrentRunTime();
 
                 if (currentRunTime.HasValue && currentRunTime.Value.TotalMilliseconds >= 0)
                 {
@@ -85,11 +85,11 @@ namespace JKMetricsLite
             _areaFirstReachedMilliseconds[areaName] = firstReachedMilliseconds;
         }
 
-        private void RegisterAreaScreenIfNeeded(string areaName, int screen)
+        private bool RegisterAreaScreenIfNeeded(string areaName, int screen)
         {
             if (areaName == "Unknown")
             {
-                return;
+                return false;
             }
 
             if (!_areaScreenAppearedOrder.ContainsKey(areaName))
@@ -99,10 +99,39 @@ namespace JKMetricsLite
 
             if (!_areaScreenAppearedOrder[areaName].Contains(screen))
             {
+                if (DoesNewScreenChangeExistingGraphOrder(areaName))
+                {
+                    _screenOrderRevision++;
+                }
+
                 _areaScreenAppearedOrder[areaName].Add(screen);
-                _screenOrderDirty = true;
-                WriteScreenOrderTsv(false);
+                AppendScreenOrderTsv(areaName, screen);
+                return true;
             }
+
+            return false;
+        }
+
+        private bool DoesNewScreenChangeExistingGraphOrder(string areaName)
+        {
+            if (!IsAreaIncludedForMetrics(areaName))
+            {
+                return false;
+            }
+
+            string lastIncludedArea = "";
+
+            for (int i = 0; i < _areaAppearedOrder.Count; i++)
+            {
+                string area = _areaAppearedOrder[i];
+
+                if (IsAreaIncludedForMetrics(area) && _areaFrames.ContainsKey(area))
+                {
+                    lastIncludedArea = area;
+                }
+            }
+
+            return lastIncludedArea.Length > 0 && lastIncludedArea != areaName;
         }
 
         private void UpdatePbIfNeeded(int screen, string areaName)
@@ -167,117 +196,11 @@ namespace JKMetricsLite
 
         private int? TryGetCurrentAttempt()
         {
-            PlayerStats? stats = TryGetPlayerStats("PlayerStatsAttemptSnapshot");
+            PlayerStats? stats = PlayerStatsReader.TryGetPlayerStats("PlayerStatsAttemptSnapshot");
 
             if (stats.HasValue)
             {
                 return stats.Value.attempts;
-            }
-
-            return null;
-        }
-
-        private TimeSpan? TryGetCurrentRunTime()
-        {
-            try
-            {
-                Type managerType = typeof(PlayerStats).Assembly.GetType(
-                    "JumpKing.MiscSystems.Achievements.AchievementManager"
-                );
-
-                if (managerType == null)
-                {
-                    return null;
-                }
-
-                FieldInfo instanceField = managerType.GetField(
-                    "instance",
-                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                object manager = instanceField == null ? null : instanceField.GetValue(null);
-
-                if (manager == null)
-                {
-                    return null;
-                }
-
-                MethodInfo getCurrentStatsMethod = managerType.GetMethod(
-                    "GetCurrentStats",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                if (getCurrentStatsMethod == null)
-                {
-                    return null;
-                }
-
-                object statsObject = getCurrentStatsMethod.Invoke(manager, null);
-
-                if (statsObject is PlayerStats)
-                {
-                    TimeSpan time = ((PlayerStats)statsObject).timeSpan;
-
-                    if (time.TotalMilliseconds >= 0)
-                    {
-                        return time;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError("Get current run time", ex);
-            }
-
-            return null;
-        }
-
-        private PlayerStats? TryGetPlayerStats(string propertyName)
-        {
-            try
-            {
-                Type saveLubeType = typeof(PlayerStats).Assembly.GetType(
-                    "JumpKing.SaveThread.SaveLube"
-                );
-
-                if (saveLubeType == null)
-                {
-                    return null;
-                }
-
-                PropertyInfo prop = saveLubeType.GetProperty(
-                    propertyName,
-                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                if (prop != null)
-                {
-                    object statsObject = prop.GetValue(null, null);
-
-                    if (statsObject is PlayerStats)
-                    {
-                        return (PlayerStats)statsObject;
-                    }
-                }
-
-                FieldInfo attemptStatsField = saveLubeType.GetField(
-                    "_attempt_stats",
-                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                if (propertyName == "PlayerStatsAttemptSnapshot" && attemptStatsField != null)
-                {
-                    object statsObject = attemptStatsField.GetValue(null);
-
-                    if (statsObject is PlayerStats)
-                    {
-                        return (PlayerStats)statsObject;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogError("Get player stats", ex);
             }
 
             return null;
