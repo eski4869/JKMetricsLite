@@ -47,6 +47,15 @@ let lastScreenOrderRevision = null;
 let lastPointKey = "";
 let hasFullRebuild = false;
 
+function resetGraphCache() {
+  cachedAreaLayoutSignature = "";
+  cachedScreenOrderText = "";
+  cachedScreenToProgress = new Map();
+  cachedMaxProgress = 0;
+  cachedPoints = [];
+  lastPointKey = "";
+}
+
 async function fetchText(path) {
   const res = await fetch(path + "?t=" + Date.now());
   return await res.text();
@@ -468,11 +477,11 @@ async function update() {
       state.screenOrderRevision !== lastScreenOrderRevision;
 
     if (needsMetricReload) {
+      resetGraphCache();
       await loadScreenMetrics();
       hasFullRebuild = true;
       lastAttempt = state.attempt;
       lastScreenOrderRevision = state.screenOrderRevision;
-      lastPointKey = "";
     } else if (needsScreenRemap) {
       await loadScreenToProgressMap();
       remapCachedPoints();

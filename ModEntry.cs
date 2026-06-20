@@ -117,6 +117,7 @@ namespace JKMetricsLite
         [OnLevelEnd]
         public static void OnLevelEnd()
         {
+            TenTimesMetrics.TryRecordCompletion();
             SaveSettingsIfDirty();
             ScreenStayStatsBehaviour.FlushOnLevelEnd();
             TotalMetricsBehaviour.FlushOnLevelEnd();
@@ -138,6 +139,12 @@ namespace JKMetricsLite
         }
 
         [PauseMenuItemSetting]
+        public static CurrentAreaMetricsToggle CurrentAreaMetricsMenu(object factory, GuiFormat format)
+        {
+            return new CurrentAreaMetricsToggle();
+        }
+
+        [PauseMenuItemSetting]
         [MainMenuItemSetting]
         public static TotalMetricsToggle TotalMetricsMenu(object factory, GuiFormat format)
         {
@@ -145,9 +152,22 @@ namespace JKMetricsLite
         }
 
         [PauseMenuItemSetting]
-        public static CurrentAreaMetricsToggle CurrentAreaMetricsMenu(object factory, GuiFormat format)
+        [MainMenuItemSetting]
+        public static TenTimesMetricsToggle TenTimesMetricsMenu(object factory, GuiFormat format)
         {
-            return new CurrentAreaMetricsToggle();
+            return new TenTimesMetricsToggle();
+        }
+
+        [PauseMenuItemSetting]
+        public static JumpKing.PauseMenu.BT.TextButton ResetTenTimesMetricsMenu(
+            object factory,
+            GuiFormat format
+        )
+        {
+            return new JumpKing.PauseMenu.BT.TextButton(
+                "  - Reset",
+                new ResetTenTimesMetricsNode()
+            );
         }
 
         public static bool IsAttemptMetricsEnabled()
@@ -162,10 +182,18 @@ namespace JKMetricsLite
             return _preferences.TotalMetricsEnabled;
         }
 
+        public static bool IsTenTimesMetricsEnabled()
+        {
+            EnsurePreferencesLoaded();
+            return _preferences.TenTimesMetricsEnabled;
+        }
+
         internal static bool AreAnyMetricsEnabled()
         {
             EnsurePreferencesLoaded();
-            return _preferences.AttemptMetricsEnabled || _preferences.TotalMetricsEnabled;
+            return _preferences.AttemptMetricsEnabled ||
+                _preferences.TotalMetricsEnabled ||
+                _preferences.TenTimesMetricsEnabled;
         }
 
         public static void SetAttemptMetricsEnabled(bool isEnabled)
@@ -194,6 +222,19 @@ namespace JKMetricsLite
             _preferences.TotalMetricsEnabled = isEnabled;
             _settingsDirty = true;
             ApplyTotalMetricsEnabledToRegisteredBehaviour();
+        }
+
+        public static void SetTenTimesMetricsEnabled(bool isEnabled)
+        {
+            EnsurePreferencesLoaded();
+
+            if (_preferences.TenTimesMetricsEnabled == isEnabled)
+            {
+                return;
+            }
+
+            _preferences.TenTimesMetricsEnabled = isEnabled;
+            _settingsDirty = true;
         }
 
         private static void ApplyAttemptMetricsEnabledToRegisteredBehaviour()
@@ -365,6 +406,32 @@ namespace JKMetricsLite
         }
     }
 
+    public class TenTimesMetricsToggle : ITextToggle
+    {
+        public TenTimesMetricsToggle() : base(JKMetricsLiteMod.IsTenTimesMetricsEnabled())
+        {
+        }
+
+        protected override string GetName()
+        {
+            return "10 Times Metrics";
+        }
+
+        protected override void OnToggle()
+        {
+            JKMetricsLiteMod.SetTenTimesMetricsEnabled(toggle);
+        }
+    }
+
+    public class ResetTenTimesMetricsNode : BehaviorTree.IBTnode
+    {
+        protected override BehaviorTree.BTresult MyRun(BehaviorTree.TickData p_data)
+        {
+            TenTimesMetrics.Reset();
+            return BehaviorTree.BTresult.Success;
+        }
+    }
+
     public class CurrentAreaMetricsToggle : ITextToggle
     {
         public CurrentAreaMetricsToggle() : base(ScreenStayStatsBehaviour.IsCurrentAreaExcludedFromMetrics())
@@ -379,7 +446,7 @@ namespace JKMetricsLite
 
         protected override string GetName()
         {
-            return "Exclude This Area";
+            return "  - Exclude This Area";
         }
 
         protected override bool CanChange()
@@ -400,12 +467,15 @@ namespace JKMetricsLite
         {
             get
             {
-                return AttemptMetricsEnabled && TotalMetricsEnabled;
+                return AttemptMetricsEnabled &&
+                    TotalMetricsEnabled &&
+                    TenTimesMetricsEnabled;
             }
             set
             {
                 AttemptMetricsEnabled = value;
                 TotalMetricsEnabled = value;
+                TenTimesMetricsEnabled = value;
             }
         }
 
@@ -416,6 +486,7 @@ namespace JKMetricsLite
 
         public bool AttemptMetricsEnabled { get; set; } = true;
         public bool TotalMetricsEnabled { get; set; } = true;
+        public bool TenTimesMetricsEnabled { get; set; } = true;
         public string OutputDir { get; set; } = "";
         public int AttemptBackupGenerations { get; set; } = 1;
     }
@@ -478,6 +549,7 @@ namespace JKMetricsLite
             public string ScreenOrderPath;
             public string StatePath;
             public string TotalStatsPath;
+            public string TenTimesMetricsPath;
             public int AttemptBackupGenerations;
         }
 
@@ -515,6 +587,7 @@ namespace JKMetricsLite
                 ScreenOrderPath = Path.Combine(currentAttemptDir, "screen_order.tsv"),
                 StatePath = Path.Combine(currentAttemptDir, "current_state.tsv"),
                 TotalStatsPath = Path.Combine(rawDataDir, "total_metrics.tsv"),
+                TenTimesMetricsPath = Path.Combine(rawDataDir, "ten_times_metrics.tsv"),
                 AttemptBackupGenerations = JKMetricsLiteMod.GetAttemptBackupGenerations()
             };
 
@@ -546,6 +619,11 @@ namespace JKMetricsLite
         internal static string GetPreparedTotalMetricsPath()
         {
             return GetLevelLoadPreparation().TotalStatsPath;
+        }
+
+        internal static string GetPreparedTenTimesMetricsPath()
+        {
+            return GetLevelLoadPreparation().TenTimesMetricsPath;
         }
 
         public ScreenStayStatsBehaviour()

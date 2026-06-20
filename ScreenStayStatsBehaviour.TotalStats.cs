@@ -164,6 +164,51 @@ namespace JKMetricsLite
             return TryGetPlayerStats("PermanentPlayerStats");
         }
 
+        internal static PlayerStats? TryGetWinStats()
+        {
+            try
+            {
+                Type managerType = typeof(PlayerStats).Assembly.GetType(
+                    "JumpKing.MiscSystems.Achievements.AchievementManager"
+                );
+
+                if (managerType == null)
+                {
+                    return null;
+                }
+
+                object manager = GetAchievementManagerInstance(managerType);
+
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                PropertyInfo winStatsProperty = managerType.GetProperty(
+                    "WinStats",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                if (winStatsProperty == null)
+                {
+                    return null;
+                }
+
+                object statsObject = winStatsProperty.GetValue(manager, null);
+
+                if (statsObject is PlayerStats)
+                {
+                    return (PlayerStats)statsObject;
+                }
+            }
+            catch (Exception ex)
+            {
+                ScreenStayStatsBehaviour.LogError("Get win stats", ex);
+            }
+
+            return null;
+        }
+
         private static object GetAchievementManagerInstance(Type managerType)
         {
             FieldInfo instanceField = managerType.GetField(

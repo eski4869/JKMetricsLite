@@ -61,6 +61,7 @@
     <Compile Include="ScreenStayStatsBehaviour.TsvOutput.cs" />
     <Compile Include="ScreenStayStatsBehaviour.Progress.cs" />
     <Compile Include="ScreenStayStatsBehaviour.State.cs" />
+    <Compile Include="TenTimesMetrics.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
