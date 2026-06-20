@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using JumpKing.MiscSystems.Achievements;
 
 namespace JKMetricsLite
 {
@@ -227,18 +228,25 @@ namespace JKMetricsLite
 
             try
             {
+                EnsureScreenMetricsTsvHeader();
+
                 bool exists = File.Exists(_screenMetricsPath);
+                PlayerStats? stats = PlayerStatsReader.TryGetCurrentStats();
+                string jumps = stats.HasValue ? stats.Value.jumps.ToString() : "";
+                string falls = stats.HasValue ? stats.Value.falls.ToString() : "";
 
                 var sb = new StringBuilder();
 
                 if (!exists)
                 {
-                    sb.AppendLine("elapsed_ms\tscreen");
+                    sb.AppendLine("elapsed_ms\tscreen\tjumps\tfalls");
                 }
 
                 sb.AppendLine(
                     FramesToMilliseconds(_totalFrames) + "\t" +
-                    _lastScreen
+                    _lastScreen + "\t" +
+                    jumps + "\t" +
+                    falls
                 );
 
                 File.AppendAllText(_screenMetricsPath, sb.ToString(), Encoding.UTF8);
@@ -247,6 +255,39 @@ namespace JKMetricsLite
             {
                 LogError("Append screen metrics TSV", ex);
             }
+        }
+
+        private void EnsureScreenMetricsTsvHeader()
+        {
+            if (_screenMetricsHeaderChecked)
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_screenMetricsPath) ||
+                !File.Exists(_screenMetricsPath) ||
+                new FileInfo(_screenMetricsPath).Length == 0)
+            {
+                _screenMetricsHeaderChecked = true;
+                return;
+            }
+
+            string header;
+
+            using (var reader = new StreamReader(_screenMetricsPath, Encoding.UTF8))
+            {
+                header = reader.ReadLine();
+            }
+
+            if (string.IsNullOrEmpty(header) ||
+                header == "elapsed_ms\tscreen\tjumps\tfalls")
+            {
+                _screenMetricsHeaderChecked = true;
+                return;
+            }
+
+            File.Delete(_screenMetricsPath);
+            _screenMetricsHeaderChecked = true;
         }
 
         private List<string> GetRawAreaFramesInAppearedOrder()

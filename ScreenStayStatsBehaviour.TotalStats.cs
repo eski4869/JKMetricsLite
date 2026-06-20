@@ -62,6 +62,20 @@ namespace JKMetricsLite
 
         internal static TimeSpan? TryGetCurrentRunTime()
         {
+            PlayerStats? stats = TryGetCurrentStats();
+
+            if (!stats.HasValue)
+            {
+                return null;
+            }
+
+            TimeSpan time = stats.Value.timeSpan;
+
+            return time.TotalMilliseconds >= 0 ? (TimeSpan?)time : null;
+        }
+
+        internal static PlayerStats? TryGetCurrentStats()
+        {
             try
             {
                 Type managerType = typeof(PlayerStats).Assembly.GetType(
@@ -94,17 +108,12 @@ namespace JKMetricsLite
 
                 if (statsObject is PlayerStats)
                 {
-                    TimeSpan time = ((PlayerStats)statsObject).timeSpan;
-
-                    if (time.TotalMilliseconds >= 0)
-                    {
-                        return time;
-                    }
+                    return (PlayerStats)statsObject;
                 }
             }
             catch (Exception ex)
             {
-                ScreenStayStatsBehaviour.LogError("Get current run time", ex);
+                ScreenStayStatsBehaviour.LogError("Get current stats", ex);
             }
 
             return null;
@@ -189,9 +198,6 @@ namespace JKMetricsLite
         {
             _instance = this;
             _hasFlushed = false;
-            JKMetricsDebugLog.Write(
-                "Total OnEnable: initialized=" + _runtimeInitialized
-            );
 
             if (!_runtimeInitialized)
             {
@@ -205,19 +211,11 @@ namespace JKMetricsLite
 
         protected override void OnDisable()
         {
-            JKMetricsDebugLog.Write(
-                "Total OnDisable: initialized=" + _runtimeInitialized +
-                ", flushed=" + _hasFlushed
-            );
             FlushForStop();
         }
 
         protected override void OnOwnerDestroy()
         {
-            JKMetricsDebugLog.Write(
-                "Total OnOwnerDestroy: initialized=" + _runtimeInitialized +
-                ", flushed=" + _hasFlushed
-            );
             FlushForStop();
 
             if (ReferenceEquals(_instance, this))
@@ -253,7 +251,6 @@ namespace JKMetricsLite
             _outputCounter = 0;
             _totalMetricsPath = ScreenStayStatsBehaviour.GetPreparedTotalMetricsPath();
             RegisterProcessExitHandler();
-            JKMetricsDebugLog.Write("Total InitializeForLevelStart");
             AppendTotalMetricsTsv();
         }
 
@@ -297,14 +294,9 @@ namespace JKMetricsLite
         {
             if (!_runtimeInitialized || _hasFlushed)
             {
-                JKMetricsDebugLog.Write(
-                    "Total FlushForStop skipped: initialized=" + _runtimeInitialized +
-                    ", flushed=" + _hasFlushed
-                );
                 return;
             }
 
-            JKMetricsDebugLog.Write("Total FlushForStop");
             AppendTotalMetricsTsv();
             _hasFlushed = true;
         }
@@ -339,11 +331,6 @@ namespace JKMetricsLite
                 );
 
                 File.AppendAllText(_totalMetricsPath, sb.ToString(), Encoding.UTF8);
-                JKMetricsDebugLog.Write(
-                    "Total append: frames=" + totals.TotalFrames +
-                    ", jumps=" + totals.TotalJumps +
-                    ", falls=" + totals.TotalFalls
-                );
             }
             catch (Exception ex)
             {

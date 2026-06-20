@@ -20,6 +20,7 @@ namespace JKMetricsLite
             _lastScreen = -1;
             _lastArea = "Unknown";
             _screenOrderRevision = 0;
+            _screenMetricsHeaderChecked = false;
 
             _pbArea = "";
             _pbAreaIndex = -1;

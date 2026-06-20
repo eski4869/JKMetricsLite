@@ -47,6 +47,11 @@ let lastScreenOrderRevision = null;
 let lastPointKey = "";
 let hasFullRebuild = false;
 
+async function fetchText(path) {
+  const res = await fetch(path + "?t=" + Date.now());
+  return await res.text();
+}
+
 function parseTsv(text) {
   const lines = text.trim().split(/\r?\n/);
 
@@ -118,31 +123,25 @@ function buildAreaLayoutSignature(areaRows) {
 
 async function loadScreenMetrics() {
   await loadScreenToProgressMap();
-  const res = await fetch(screenMetricsFilePath + "?t=" + Date.now());
-  const text = await res.text();
+  const text = await fetchText(screenMetricsFilePath);
   const recentLines = getRecentLines(text, maxPoints);
 
   const points = recentLines.map(line => {
-    const tabIndex = line.indexOf("\t");
+    const cols = line.split("\t");
 
-    if (tabIndex <= 0) {
+    if (cols.length < 2) {
       return null;
     }
 
-    const elapsedMs = Number(line.slice(0, tabIndex));
-    const progress = cachedScreenToProgress.get(Number(line.slice(tabIndex + 1)));
+    const elapsedMs = Number(cols[0]);
+    const screen = Number(cols[1]);
+    const progress = cachedScreenToProgress.get(screen);
 
     if (!progress) {
       return null;
     }
 
-    return {
-      elapsedMs,
-      progressIndex: progress.progressIndex,
-      areaIndex: progress.areaIndex,
-      screenInArea: progress.screenInArea,
-      label: progress.areaIndex + "-" + progress.screenInArea
-    };
+    return buildGraphPoint(elapsedMs, screen, progress);
   }).filter(p =>
     p &&
     Number.isFinite(p.elapsedMs) &&
@@ -153,9 +152,37 @@ async function loadScreenMetrics() {
   return cachedPoints;
 }
 
+function buildGraphPoint(elapsedMs, screen, progress) {
+  return {
+    elapsedMs,
+    screen,
+    progressIndex: progress.progressIndex,
+    areaIndex: progress.areaIndex,
+    screenInArea: progress.screenInArea,
+    label: progress.areaIndex + "-" + progress.screenInArea
+  };
+}
+
+function remapCachedPoints() {
+  cachedPoints = cachedPoints.map(point => {
+    const progress = cachedScreenToProgress.get(point.screen);
+
+    if (!progress) {
+      return null;
+    }
+
+    return buildGraphPoint(point.elapsedMs, point.screen, progress);
+  }).filter(point => point !== null);
+
+  if (cachedPoints.length > maxPoints) {
+    cachedPoints = cachedPoints.slice(-maxPoints);
+  }
+
+  return cachedPoints.length;
+}
+
 async function loadCurrentState() {
-  const res = await fetch(stateFilePath + "?t=" + Date.now());
-  const text = await res.text();
+  const text = await fetchText(stateFilePath);
   const row = parseTsv(text)[0] || {};
 
   return {
@@ -170,10 +197,8 @@ async function loadCurrentState() {
 }
 
 async function loadScreenToProgressMap() {
-  const areaRes = await fetch(areaFilePath + "?t=" + Date.now());
-  const screenOrderRes = await fetch(screenOrderFilePath + "?t=" + Date.now());
-  const areaText = await areaRes.text();
-  const screenOrderText = await screenOrderRes.text();
+  const areaText = await fetchText(areaFilePath);
+  const screenOrderText = await fetchText(screenOrderFilePath);
 
   const areaRows = parseTsv(areaText);
   const areaLayoutSignature = buildAreaLayoutSignature(areaRows);
@@ -261,26 +286,28 @@ function appendStatePoint(state) {
   if (!Number.isFinite(state.elapsedMs) ||
       !Number.isFinite(state.screen) ||
       state.screen <= 0) {
-    return;
+    return "invalid-state";
   }
 
   const key = getPointKey(state);
 
   if (key === lastPointKey) {
-    return;
+    return "same-point";
   }
 
   let progress = cachedScreenToProgress.get(state.screen);
+  let result = "known-screen";
 
   if (!progress) {
     if (!Number.isFinite(state.currentAreaOrder) ||
         !Number.isFinite(state.currentScreenOrder) ||
         state.currentAreaOrder <= 0 ||
         state.currentScreenOrder <= 0) {
-      return;
+      return "unknown-screen";
     }
 
     cachedMaxProgress++;
+    result = "append-screen";
     progress = {
       progressIndex: cachedMaxProgress,
       areaIndex: state.currentAreaOrder,
@@ -289,19 +316,14 @@ function appendStatePoint(state) {
     cachedScreenToProgress.set(state.screen, progress);
   }
 
-  cachedPoints.push({
-    elapsedMs: state.elapsedMs,
-    progressIndex: progress.progressIndex,
-    areaIndex: progress.areaIndex,
-    screenInArea: progress.screenInArea,
-    label: progress.areaIndex + "-" + progress.screenInArea
-  });
+  cachedPoints.push(buildGraphPoint(state.elapsedMs, state.screen, progress));
 
   if (cachedPoints.length > maxPoints) {
     cachedPoints = cachedPoints.slice(-maxPoints);
   }
 
   lastPointKey = key;
+  return result;
 }
 
 function formatRelativeTime(milliseconds) {
@@ -431,17 +453,29 @@ function drawChart(points) {
 }
 
 async function update() {
+  let state = null;
+
   try {
-    const state = await loadCurrentState();
-    const needsFullRebuild =
+    state = await loadCurrentState();
+
+    const needsMetricReload =
       !hasFullRebuild ||
-      state.attempt !== lastAttempt ||
+      state.attempt !== lastAttempt;
+
+    const needsScreenRemap =
+      hasFullRebuild &&
+      state.attempt === lastAttempt &&
       state.screenOrderRevision !== lastScreenOrderRevision;
 
-    if (needsFullRebuild) {
+    if (needsMetricReload) {
       await loadScreenMetrics();
       hasFullRebuild = true;
       lastAttempt = state.attempt;
+      lastScreenOrderRevision = state.screenOrderRevision;
+      lastPointKey = "";
+    } else if (needsScreenRemap) {
+      await loadScreenToProgressMap();
+      remapCachedPoints();
       lastScreenOrderRevision = state.screenOrderRevision;
       lastPointKey = "";
     }

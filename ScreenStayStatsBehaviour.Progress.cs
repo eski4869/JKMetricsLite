@@ -55,7 +55,6 @@ namespace JKMetricsLite
 
             _screenOrderRevision++;
             RecalculatePb();
-            LogAttemptOutput("area-exclusion", true, false, false);
             WriteOutputFiles();
         }
 
@@ -86,11 +85,11 @@ namespace JKMetricsLite
             _areaFirstReachedMilliseconds[areaName] = firstReachedMilliseconds;
         }
 
-        private void RegisterAreaScreenIfNeeded(string areaName, int screen)
+        private bool RegisterAreaScreenIfNeeded(string areaName, int screen)
         {
             if (areaName == "Unknown")
             {
-                return;
+                return false;
             }
 
             if (!_areaScreenAppearedOrder.ContainsKey(areaName))
@@ -106,9 +105,11 @@ namespace JKMetricsLite
                 }
 
                 _areaScreenAppearedOrder[areaName].Add(screen);
-                LogAttemptOutput("new-screen-order", false, false, true);
                 AppendScreenOrderTsv(areaName, screen);
+                return true;
             }
+
+            return false;
         }
 
         private bool DoesNewScreenChangeExistingGraphOrder(string areaName)
