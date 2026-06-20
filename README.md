@@ -48,12 +48,12 @@ JKMetricsLite/
 |   |   |   |-- area_progress.tsv
 |   |   |   |-- screen_order.tsv
 |   |   |   |-- screen_metrics.tsv
-|   |   |   `-- state.tsv
+|   |   |   `-- current_state.tsv
 |   |   `-- 777/
 |   |       |-- area_progress.tsv
 |   |       |-- screen_order.tsv
 |   |       |-- screen_metrics.tsv
-|   |       `-- state.tsv
+|   |       `-- current_state.tsv
 |   `-- total_metrics.tsv
 |-- obs/
 |   |-- area_name_splits.html
@@ -79,9 +79,9 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 | Type | File | Key | Values | Update timing |
 | --- | --- | --- | --- | --- |
 | Run Progress | `raw_data/attempts/current/area_progress.tsv` | Area | Split time, duration, current and excluded flags | Rewritten about every 60 frames. |
-| Run Metrics | `raw_data/attempts/current/screen_order.tsv` | Area | First-reached screen order | When a new screen order entry is discovered and on exit. |
+| Run Metrics | `raw_data/attempts/current/screen_order.tsv` | Screen | First-reached screen order log | Appended when a new screen is discovered. |
 | Screen Metrics | `raw_data/attempts/current/screen_metrics.tsv` | Elapsed time | Screen snapshot samples | Appended about every 60 frames. |
-| Current State | `raw_data/attempts/current/state.tsv` | Current attempt | Attempt and Now/PB progress | Rewritten about every 60 frames. |
+| Current State | `raw_data/attempts/current/current_state.tsv` | Current attempt | Latest screen, Now/PB progress, and graph revision | Rewritten about every 60 frames. |
 
 The raw TSV files store numeric values such as milliseconds. Formatting for normal or speedrun-style display is handled by the HTML views.
 Run metrics are restored from the attempt TSV files when continuing the same attempt.
@@ -97,7 +97,7 @@ area_name	split_ms	duration_ms	is_current	is_excluded
 `raw_data/attempts/current/screen_order.tsv`
 
 ```text
-area_name	screen
+elapsed_ms	screen	area_name
 ```
 
 `raw_data/attempts/current/screen_metrics.tsv`
@@ -106,10 +106,10 @@ area_name	screen
 elapsed_ms	screen
 ```
 
-`raw_data/attempts/current/state.tsv`
+`raw_data/attempts/current/current_state.tsv`
 
 ```text
-attempt	current_area_order	current_screen_order	pb_area_order	pb_screen_order
+attempt	elapsed_ms	screen	area_name	current_area_order	current_screen_order	pb_area_order	pb_screen_order	screen_order_revision
 ```
 
 ### OBS Views

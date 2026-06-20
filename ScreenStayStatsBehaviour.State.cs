@@ -17,10 +17,9 @@ namespace JKMetricsLite
 
             _totalFrames = 0;
             _outputCounter = 0;
-            _screenOrderSaveCounter = 0;
             _lastScreen = -1;
             _lastArea = "Unknown";
-            _screenOrderDirty = false;
+            _screenOrderRevision = 0;
 
             _pbArea = "";
             _pbAreaIndex = -1;
@@ -74,7 +73,7 @@ namespace JKMetricsLite
         {
             if (!File.Exists(_areaProgressPath) ||
                 !File.Exists(_screenOrderPath) ||
-                !File.Exists(_statePath))
+                !File.Exists(GetStatePathForRead()))
             {
                 return false;
             }
@@ -99,7 +98,6 @@ namespace JKMetricsLite
                 _attempt = currentAttempt.HasValue
                     ? currentAttempt
                     : savedAttempt;
-                _screenOrderDirty = false;
                 return true;
             }
             catch (Exception ex)
@@ -210,7 +208,7 @@ namespace JKMetricsLite
 
         private void LoadState()
         {
-            List<Dictionary<string, string>> rows = ReadTsvRows(_statePath);
+            List<Dictionary<string, string>> rows = ReadTsvRows(GetStatePathForRead());
 
             if (rows.Count == 0)
             {
@@ -223,6 +221,16 @@ namespace JKMetricsLite
             if (int.TryParse(GetTsvValue(row, "attempt"), out savedAttempt))
             {
                 _attempt = savedAttempt;
+            }
+
+            int screenOrderRevision;
+
+            if (int.TryParse(
+                GetTsvValue(row, "screen_order_revision"),
+                out screenOrderRevision
+            ))
+            {
+                _screenOrderRevision = Math.Max(0, screenOrderRevision);
             }
         }
 
@@ -257,7 +265,7 @@ namespace JKMetricsLite
             try
             {
                 List<Dictionary<string, string>> rows =
-                    ReadTsvRows(_statePath);
+                    ReadTsvRows(GetStatePathForRead());
 
                 if (rows.Count == 0)
                 {
@@ -282,6 +290,11 @@ namespace JKMetricsLite
 
         private List<Dictionary<string, string>> ReadTsvRows(string path)
         {
+            if (string.IsNullOrEmpty(path))
+            {
+                return new List<Dictionary<string, string>>();
+            }
+
             if (!File.Exists(path))
             {
                 return new List<Dictionary<string, string>>();
@@ -320,6 +333,11 @@ namespace JKMetricsLite
 
         private Dictionary<string, string> ReadLastTsvRow(string path)
         {
+            if (string.IsNullOrEmpty(path))
+            {
+                return null;
+            }
+
             if (!File.Exists(path))
             {
                 return null;
@@ -362,6 +380,26 @@ namespace JKMetricsLite
         {
             string value;
             return row.TryGetValue(key, out value) ? value : "";
+        }
+
+        private string GetStatePathForRead()
+        {
+            if (!string.IsNullOrEmpty(_statePath) && File.Exists(_statePath))
+            {
+                return _statePath;
+            }
+
+            if (!string.IsNullOrEmpty(_currentAttemptDir))
+            {
+                string legacyPath = Path.Combine(_currentAttemptDir, "state.tsv");
+
+                if (File.Exists(legacyPath))
+                {
+                    return legacyPath;
+                }
+            }
+
+            return _statePath;
         }
     }
 }

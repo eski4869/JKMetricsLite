@@ -53,10 +53,10 @@ namespace JKMetricsLite
                 return;
             }
 
+            _screenOrderRevision++;
             RecalculatePb();
-            LogAttemptOutput("area-exclusion", true, false, true);
+            LogAttemptOutput("area-exclusion", true, false, false);
             WriteOutputFiles();
-            WriteScreenOrderTsv(false);
         }
 
         private bool IsAreaIncludedForMetrics(string areaName)
@@ -100,11 +100,37 @@ namespace JKMetricsLite
 
             if (!_areaScreenAppearedOrder[areaName].Contains(screen))
             {
+                if (DoesNewScreenChangeExistingGraphOrder(areaName))
+                {
+                    _screenOrderRevision++;
+                }
+
                 _areaScreenAppearedOrder[areaName].Add(screen);
-                _screenOrderDirty = true;
                 LogAttemptOutput("new-screen-order", false, false, true);
-                WriteScreenOrderTsv(false);
+                AppendScreenOrderTsv(areaName, screen);
             }
+        }
+
+        private bool DoesNewScreenChangeExistingGraphOrder(string areaName)
+        {
+            if (!IsAreaIncludedForMetrics(areaName))
+            {
+                return false;
+            }
+
+            string lastIncludedArea = "";
+
+            for (int i = 0; i < _areaAppearedOrder.Count; i++)
+            {
+                string area = _areaAppearedOrder[i];
+
+                if (IsAreaIncludedForMetrics(area) && _areaFrames.ContainsKey(area))
+                {
+                    lastIncludedArea = area;
+                }
+            }
+
+            return lastIncludedArea.Length > 0 && lastIncludedArea != areaName;
         }
 
         private void UpdatePbIfNeeded(int screen, string areaName)

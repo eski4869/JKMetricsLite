@@ -450,7 +450,6 @@ namespace JKMetricsLite
         private const int MinScreen = 1;
         private const int MaxScreen = 169;
         private const int OutputIntervalFrames = 60;
-        private const int ScreenOrderSaveIntervalFrames = 3600;
         private const string OutputFolderName = "JKMetricsLite";
 
         private static ScreenStayStatsBehaviour _instance;
@@ -481,10 +480,9 @@ namespace JKMetricsLite
 
         private int _totalFrames = 0;
         private int _outputCounter = 0;
-        private int _screenOrderSaveCounter = 0;
         private int _lastScreen = -1;
         private string _lastArea = "Unknown";
-        private bool _screenOrderDirty = false;
+        private int _screenOrderRevision = 0;
 
         // PB is based on first-reached area order + first-reached screen order inside that area.
         private string _pbArea = "";
@@ -539,7 +537,7 @@ namespace JKMetricsLite
                 AreaProgressPath = Path.Combine(currentAttemptDir, "area_progress.tsv"),
                 ScreenMetricsPath = Path.Combine(currentAttemptDir, "screen_metrics.tsv"),
                 ScreenOrderPath = Path.Combine(currentAttemptDir, "screen_order.tsv"),
-                StatePath = Path.Combine(currentAttemptDir, "state.tsv"),
+                StatePath = Path.Combine(currentAttemptDir, "current_state.tsv"),
                 TotalStatsPath = Path.Combine(rawDataDir, "total_metrics.tsv"),
                 AttemptBackupGenerations = JKMetricsLiteMod.GetAttemptBackupGenerations()
             };
@@ -661,9 +659,8 @@ namespace JKMetricsLite
             }
 
             TrackCurrentFrame();
-            LogAttemptOutput("initialize", true, false, true);
+            LogAttemptOutput("initialize", true, false, false);
             WriteOutputFiles();
-            WriteScreenOrderTsv(!loaded);
         }
 
         private static string ResolveOutputDir(string assemblyDir, string configuredOutputDir)
@@ -848,9 +845,8 @@ namespace JKMetricsLite
                 ", screen=" + _lastScreen +
                 ", area=" + _lastArea
             );
-            LogAttemptOutput("flush", true, true, true);
+            LogAttemptOutput("flush", true, true, false);
             WriteOutputFiles();
-            WriteScreenOrderTsv(false);
             AppendScreenMetricTsv();
 
             _hasFlushed = true;
@@ -913,14 +909,6 @@ namespace JKMetricsLite
                 AppendScreenMetricTsv();
             }
 
-            _screenOrderSaveCounter++;
-
-            if (_screenOrderSaveCounter >= ScreenOrderSaveIntervalFrames)
-            {
-                _screenOrderSaveCounter = 0;
-                LogAttemptOutput("screen-order-interval", false, false, true);
-                WriteScreenOrderTsv(false);
-            }
         }
 
         private void WriteOutputFiles()
@@ -943,8 +931,7 @@ namespace JKMetricsLite
                 ", area=" + _lastArea +
                 ", progress=" + writesProgress +
                 ", screenMetric=" + writesScreenMetric +
-                ", screenOrder=" + writesScreenOrder +
-                ", screenOrderDirty=" + _screenOrderDirty
+                ", screenOrder=" + writesScreenOrder
             );
         }
     }
