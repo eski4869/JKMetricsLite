@@ -596,8 +596,8 @@ namespace JKMetricsLite
             WriteOverlayHtmlIfMissing(obsDir, "area_name_splits_speedrun.html", LoadOverlayTemplate(AreaNameSplitSpeedrunTemplateName));
             WriteOverlayHtmlIfMissing(obsDir, "area_number_splits_speedrun.html", LoadOverlayTemplate(AreaNumberSplitSpeedrunTemplateName));
             WriteOverlayHtmlIfMissing(obsDir, "progress_graph.html", LoadOverlayTemplate(ScreenGraphTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "ten_times_metrics.html", LoadOverlayTemplate(TenTimesMetricsTemplateName));
             WriteOverlayHtmlIfMissing(localDir, "recap.html", LoadOverlayTemplate(RecapTemplateName));
-            WriteOverlayHtmlIfMissing(localDir, "ten_times_metrics.html", LoadOverlayTemplate(TenTimesMetricsTemplateName));
 
             _levelLoadPreparation = preparation;
         }

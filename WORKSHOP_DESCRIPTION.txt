@@ -91,6 +91,7 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 [*][b]obs/area_name_splits_speedrun.html[/b] - A speedrun-focused area name split table using m s ms time format.
 [*][b]obs/area_number_splits_speedrun.html[/b] - A speedrun-focused area number split table using m s ms time format.
 [*][b]obs/progress_graph.html[/b] - Displays screen progress as a real-time graph.
+[*][b]obs/ten_times_metrics.html[/b] - Displays recent 10 Times clear records with area name, clear time, average, minimum, maximum, and total.
 [/list]
 
 [hr]
@@ -119,7 +120,7 @@ The TSV file is selected manually so the page can work when opened directly in a
 [*][b]raw_data/ten_times_metrics.tsv[/b] - Latest clear-time records with attempt, map name, and clear time.
 [/list]
 
-Open local/ten_times_metrics.html directly in a browser and select raw_data/ten_times_metrics.tsv to view recent clears, total time, best time, average time, and slowest time.
+Open obs/ten_times_metrics.html in OBS to display recent clears, average, minimum, maximum, and total.
 
 [hr]
 

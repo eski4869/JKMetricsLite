@@ -2,399 +2,209 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>10 Times Metrics</title>
   <style>
-    :root {
-      --bg: #101216;
-      --panel: #1a1d23;
-      --line: #333943;
-      --text: #f5f0df;
-      --muted: #a5acb7;
-      --accent: #7ab7cf;
-      --good: #438f6e;
-      --warn: #c99a35;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
     body {
       margin: 0;
-      padding: 20px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "Segoe UI", "Meiryo", sans-serif;
-    }
-
-    .shell {
-      max-width: 760px;
-      margin: 0 auto;
-    }
-
-    header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-      padding-bottom: 14px;
-      margin-bottom: 14px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 36px;
-      line-height: 1.1;
-    }
-
-    h2 {
-      margin: 0 0 12px;
+      padding: 8px;
+      background: transparent;
+      color: #fff;
+      font-family: "Cascadia Mono", "Consolas", "Courier New", monospace;
       font-size: 18px;
-    }
-
-    .controls {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
-    }
-
-    .control-row {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-
-    input[type="file"] {
-      max-width: 300px;
-      color: var(--muted);
-    }
-
-    button {
-      height: 34px;
-      border: 1px solid var(--line);
-      background: #242932;
-      color: var(--text);
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    button:hover {
-      border-color: var(--accent);
-    }
-
-    .status {
-      color: var(--muted);
-      font-size: 13px;
-      text-align: right;
-    }
-
-    .status.error,
-    .status.loading {
-      color: #e74c3c;
-      font-weight: 700;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .card,
-    .panel {
-      border: 1px solid var(--line);
-      background: var(--panel);
-    }
-
-    .card {
-      padding: 12px;
-      min-height: 78px;
-    }
-
-    .label {
-      color: var(--muted);
-      font-size: 13px;
-      margin-bottom: 8px;
-    }
-
-    .metric {
-      font-size: 22px;
-      font-weight: 800;
-      line-height: 1.15;
-    }
-
-    .panel {
-      padding: 14px;
+      line-height: 1.35;
     }
 
     table {
-      width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
+      background: transparent;
     }
 
     th,
     td {
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--line);
+      padding: 3px 8px;
       text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      vertical-align: top;
     }
 
     th {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-    }
-
-    td {
-      font-size: 15px;
-    }
-
-    .time {
-      color: var(--text);
-      font-weight: 700;
-    }
-
-    .attempt {
-      color: var(--muted);
-      text-align: right;
-    }
-
-    .empty {
-      padding: 22px 10px;
-      color: var(--muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.6);
       text-align: center;
     }
 
-    @media (max-width: 640px) {
-      header {
-        flex-direction: column;
-      }
+    th.area,
+    td.area {
+      width: 24ch;
+      max-width: 24ch;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
 
-      .controls {
-        align-items: stretch;
-      }
+    th.time,
+    td.time {
+      width: 13ch;
+      white-space: pre;
+      text-align: right;
+    }
 
-      .control-row {
-        justify-content: flex-start;
-      }
+    tr.summary-start td {
+      padding-top: 10px;
+    }
 
-      .cards {
-        grid-template-columns: repeat(2, 1fr);
-      }
+    td.label {
+      color: rgba(255, 255, 255, 0.85);
+      font-weight: bold;
+      text-align: right;
     }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <header>
-      <div>
-        <h1>10 Times Metrics</h1>
-      </div>
-      <div class="controls">
-        <div class="control-row">
-          <input id="fileInput" type="file" accept=".tsv,.txt,text/tab-separated-values,text/plain">
-          <button id="reloadFile" type="button">Reload</button>
-        </div>
-        <div id="status" class="status error">Choose ten_times_metrics.tsv to render your clears.</div>
-      </div>
-    </header>
+<table>
+  <thead>
+    <tr>
+      <th class="area">Area Name</th>
+      <th class="time">Clear Time</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
 
-    <section class="cards">
-      <div class="card">
-        <div class="label">Total</div>
-        <div id="totalTime" class="metric">-</div>
-      </div>
-      <div class="card">
-        <div class="label">Best</div>
-        <div id="bestTime" class="metric">-</div>
-      </div>
-      <div class="card">
-        <div class="label">Average</div>
-        <div id="averageTime" class="metric">-</div>
-      </div>
-      <div class="card">
-        <div class="label">Slowest</div>
-        <div id="slowestTime" class="metric">-</div>
-      </div>
-    </section>
+<script>
+const filePath = "../raw_data/ten_times_metrics.tsv";
+const refreshMs = 1000;
 
-    <section class="panel">
-      <h2>Recent Clears</h2>
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 44%;">Map</th>
-            <th style="width: 28%;">Clear Time</th>
-            <th style="width: 28%; text-align: right;">Attempt</th>
-          </tr>
-        </thead>
-        <tbody id="rows">
-          <tr>
-            <td class="empty" colspan="3">No clear records loaded.</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-  </div>
+async function fetchText(path) {
+  const res = await fetch(path + "?t=" + Date.now());
+  return await res.text();
+}
 
-  <script>
-    const fileInput = document.getElementById("fileInput");
-    const reloadFile = document.getElementById("reloadFile");
-    const statusEl = document.getElementById("status");
-    const rowsEl = document.getElementById("rows");
-    const totalTimeEl = document.getElementById("totalTime");
-    const bestTimeEl = document.getElementById("bestTime");
-    const averageTimeEl = document.getElementById("averageTime");
-    const slowestTimeEl = document.getElementById("slowestTime");
+function parseTsv(text) {
+  const lines = text.trim().split(/\r?\n/);
 
-    let selectedFile = null;
+  if (lines.length <= 1) {
+    return [];
+  }
 
-    function setStatus(text, kind) {
-      statusEl.textContent = text;
-      statusEl.className = "status" + (kind ? " " + kind : "");
+  const header = lines[0].split("\t");
+  const mapIndex = header.indexOf("map_name");
+  const timeIndex = header.indexOf("clear_time_ms");
+
+  if (mapIndex < 0 || timeIndex < 0) {
+    return [];
+  }
+
+  const records = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === "") {
+      continue;
     }
 
-    function formatTime(ms) {
-      if (!Number.isFinite(ms) || ms < 0) {
-        return "-";
-      }
+    const columns = lines[i].split("\t");
+    const clearTime = Number(columns[timeIndex]);
 
-      const totalMilliseconds = Math.round(ms);
-      const minutes = Math.floor(totalMilliseconds / 60000);
-      const seconds = Math.floor((totalMilliseconds % 60000) / 1000);
-      const milliseconds = totalMilliseconds % 1000;
-
-      return minutes + "m " +
-        String(seconds).padStart(2, "0") + "s " +
-        String(milliseconds).padStart(3, "0") + "ms";
+    if (!Number.isFinite(clearTime)) {
+      continue;
     }
 
-    function parseRows(text) {
-      const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-
-      if (lines.length <= 1) {
-        return [];
-      }
-
-      const header = lines[0].split("\t");
-      const attemptIndex = header.indexOf("attempt");
-      const mapIndex = header.indexOf("map_name");
-      const clearTimeIndex = header.indexOf("clear_time_ms");
-
-      if (attemptIndex < 0 || mapIndex < 0 || clearTimeIndex < 0) {
-        throw new Error("Invalid TSV header. Expected: attempt, map_name, clear_time_ms.");
-      }
-
-      const records = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const columns = lines[i].split("\t");
-        const clearTime = Number(columns[clearTimeIndex]);
-
-        if (!Number.isFinite(clearTime)) {
-          continue;
-        }
-
-        records.push({
-          attempt: columns[attemptIndex] || "",
-          mapName: columns[mapIndex] || "",
-          clearTime
-        });
-      }
-
-      return records;
-    }
-
-    function render(records) {
-      if (records.length === 0) {
-        totalTimeEl.textContent = "-";
-        bestTimeEl.textContent = "-";
-        averageTimeEl.textContent = "-";
-        slowestTimeEl.textContent = "-";
-        rowsEl.innerHTML = '<tr><td class="empty" colspan="3">No clear records loaded.</td></tr>';
-        return;
-      }
-
-      const times = records.map(record => record.clearTime);
-      const total = times.reduce((sum, value) => sum + value, 0);
-      const best = Math.min(...times);
-      const slowest = Math.max(...times);
-
-      totalTimeEl.textContent = formatTime(total);
-      bestTimeEl.textContent = formatTime(best);
-      averageTimeEl.textContent = formatTime(total / records.length);
-      slowestTimeEl.textContent = formatTime(slowest);
-
-      rowsEl.innerHTML = "";
-
-      for (const record of records) {
-        const tr = document.createElement("tr");
-
-        const mapTd = document.createElement("td");
-        mapTd.textContent = record.mapName || "-";
-        mapTd.title = record.mapName || "-";
-
-        const timeTd = document.createElement("td");
-        timeTd.className = "time";
-        timeTd.textContent = formatTime(record.clearTime);
-
-        const attemptTd = document.createElement("td");
-        attemptTd.className = "attempt";
-        attemptTd.textContent = record.attempt || "-";
-
-        tr.appendChild(mapTd);
-        tr.appendChild(timeTd);
-        tr.appendChild(attemptTd);
-        rowsEl.appendChild(tr);
-      }
-    }
-
-    function readSelectedFile() {
-      if (!selectedFile) {
-        setStatus("Choose ten_times_metrics.tsv to render your clears.", "error");
-        render([]);
-        return;
-      }
-
-      setStatus("Loading " + selectedFile.name + "...", "loading");
-
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        try {
-          const records = parseRows(String(reader.result || ""));
-          render(records);
-          setStatus(selectedFile.name + ": " + records.length + " clears loaded.", "");
-        } catch (error) {
-          render([]);
-          setStatus(error.message, "error");
-        }
-      };
-
-      reader.onerror = () => {
-        render([]);
-        setStatus("Could not read " + selectedFile.name + ".", "error");
-      };
-
-      reader.readAsText(selectedFile);
-    }
-
-    fileInput.addEventListener("change", () => {
-      selectedFile = fileInput.files && fileInput.files.length > 0
-        ? fileInput.files[0]
-        : null;
-      readSelectedFile();
+    records.push({
+      areaName: columns[mapIndex] || "-",
+      clearTime
     });
+  }
 
-    reloadFile.addEventListener("click", readSelectedFile);
-  </script>
+  return records;
+}
+
+function formatTime(ms) {
+  if (!Number.isFinite(ms) || ms < 0) {
+    return "-";
+  }
+
+  const rounded = Math.round(ms);
+  const minutes = Math.floor(rounded / 60000);
+  const seconds = Math.floor((rounded % 60000) / 1000);
+  const milliseconds = rounded % 1000;
+
+  return String(minutes).padStart(2, " ") + "m " +
+    String(seconds).padStart(2, "0") + "s " +
+    String(milliseconds).padStart(3, "0") + "ms";
+}
+
+function appendRow(tbody, areaName, clearTime, className) {
+  const tr = document.createElement("tr");
+
+  if (className) {
+    tr.className = className;
+  }
+
+  const areaTd = document.createElement("td");
+  areaTd.className = "area";
+  areaTd.textContent = areaName;
+
+  const timeTd = document.createElement("td");
+  timeTd.className = "time";
+  timeTd.textContent = formatTime(clearTime);
+
+  tr.appendChild(areaTd);
+  tr.appendChild(timeTd);
+  tbody.appendChild(tr);
+}
+
+function appendSummaryRow(tbody, label, clearTime, className) {
+  const tr = document.createElement("tr");
+
+  if (className) {
+    tr.className = className;
+  }
+
+  const labelTd = document.createElement("td");
+  labelTd.className = "label";
+  labelTd.textContent = label;
+
+  const timeTd = document.createElement("td");
+  timeTd.className = "time";
+  timeTd.textContent = formatTime(clearTime);
+
+  tr.appendChild(labelTd);
+  tr.appendChild(timeTd);
+  tbody.appendChild(tr);
+}
+
+function render(records) {
+  const tbody = document.getElementById("rows");
+  tbody.innerHTML = "";
+
+  if (records.length === 0) {
+    return;
+  }
+
+  for (const record of records) {
+    appendRow(tbody, record.areaName, record.clearTime, "");
+  }
+
+  const times = records.map(record => record.clearTime);
+  const total = times.reduce((sum, value) => sum + value, 0);
+  const avg = total / records.length;
+  const min = Math.min(...times);
+  const max = Math.max(...times);
+
+  appendSummaryRow(tbody, "avg", avg, "summary-start");
+  appendSummaryRow(tbody, "min", min, "");
+  appendSummaryRow(tbody, "max", max, "");
+  appendSummaryRow(tbody, "total", total, "");
+}
+
+async function update() {
+  try {
+    render(parseTsv(await fetchText(filePath)));
+  } catch {
+    render([]);
+  }
+}
+
+update();
+setInterval(update, refreshMs);
+</script>
 </body>
 </html>

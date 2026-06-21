@@ -64,10 +64,10 @@ JKMetricsLite/
 |   |-- area_number_splits.html
 |   |-- area_name_splits_speedrun.html
 |   |-- area_number_splits_speedrun.html
-|   `-- progress_graph.html
-|-- local/
-|   |-- recap.html
+|   |-- progress_graph.html
 |   `-- ten_times_metrics.html
+|-- local/
+|   `-- recap.html
 `-- error.log
 ```
 
@@ -151,6 +151,10 @@ Displays screen progress as a real-time graph.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/8ca9df05-ac2a-472f-b7b4-a4ae0f5e8b64" />
 
+`obs/ten_times_metrics.html`
+
+Displays recent 10 Times clear records with area name, clear time, average, minimum, maximum, and total.
+
 In practice, crop the overlay and use only the parts you need. The image below is an example stream layout.
 
 <img width="605" height="348" alt="image" src="https://github.com/user-attachments/assets/10760438-0855-4935-8f05-2f1c7db61d6b" />
@@ -189,7 +193,7 @@ The TSV file is selected manually so the page can work when opened directly in a
 attempt	map_name	clear_time_ms
 ```
 
-Open `local/ten_times_metrics.html` directly in a browser and select `raw_data/ten_times_metrics.tsv` to view recent clears, total time, best time, average time, and slowest time.
+Open `obs/ten_times_metrics.html` in OBS to display recent clears, average, minimum, maximum, and total.
 
 
 ## Area and PB Logic
