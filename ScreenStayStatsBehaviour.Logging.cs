@@ -35,7 +35,7 @@ namespace JKMetricsLite
                 if (string.IsNullOrEmpty(outputDir))
                 {
                     string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                    outputDir = Path.Combine(assemblyDir, OutputFolderName);
+                    outputDir = Path.Combine(assemblyDir, DefaultOutputFolderName);
                 }
 
                 Directory.CreateDirectory(outputDir);

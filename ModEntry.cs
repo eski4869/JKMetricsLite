@@ -314,9 +314,9 @@ namespace JKMetricsLite
 
         private static void NormalizePreferences()
         {
-            if (_preferences.OutputDir == null)
+            if (string.IsNullOrWhiteSpace(_preferences.OutputDir))
             {
-                _preferences.OutputDir = "";
+                _preferences.OutputDir = ScreenStayStatsBehaviour.DefaultOutputFolderName;
                 _settingsDirty = true;
             }
 
@@ -487,7 +487,7 @@ namespace JKMetricsLite
         public bool AttemptMetricsEnabled { get; set; } = true;
         public bool TotalMetricsEnabled { get; set; } = true;
         public bool TenTimesMetricsEnabled { get; set; } = true;
-        public string OutputDir { get; set; } = "";
+        public string OutputDir { get; set; } = ScreenStayStatsBehaviour.DefaultOutputFolderName;
         public int AttemptBackupGenerations { get; set; } = 1;
     }
 
@@ -496,7 +496,7 @@ namespace JKMetricsLite
         private const int MinScreen = 1;
         private const int MaxScreen = 169;
         private const int OutputIntervalFrames = 60;
-        private const string OutputFolderName = "JKMetricsLite";
+        internal const string DefaultOutputFolderName = "JKMetricsLite";
 
         private static ScreenStayStatsBehaviour _instance;
         private static bool _processExitRegistered = false;
@@ -703,7 +703,7 @@ namespace JKMetricsLite
 
         private static string ResolveOutputDir(string assemblyDir, string configuredOutputDir)
         {
-            string defaultOutputDir = Path.Combine(assemblyDir, OutputFolderName);
+            string defaultOutputDir = Path.Combine(assemblyDir, DefaultOutputFolderName);
 
             try
             {

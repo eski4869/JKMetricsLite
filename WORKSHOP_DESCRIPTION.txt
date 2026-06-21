@@ -29,7 +29,7 @@ With the default Steam install location, the output folder is usually:
 
 If your Steam library is installed somewhere else, the first part of the path will be different.
 
-To change the output folder, edit OutputDir in eski4869.JKMetricsLite.Settings.xml. Leave it empty to use the default location. Restart the game after editing the settings file.
+To change the output folder, edit OutputDir in eski4869.JKMetricsLite.Settings.xml. JKMetricsLite is a relative path and creates the output folder next to the mod. Absolute paths such as C:\JumpKingMetrics are also supported. Restart the game after editing the settings file.
 
 The mod menu has separate toggles for Attempt Metrics, Total Metrics, and 10 Times Metrics.
 

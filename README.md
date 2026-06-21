@@ -26,7 +26,7 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
   <AttemptMetricsEnabled>true</AttemptMetricsEnabled>
   <TotalMetricsEnabled>true</TotalMetricsEnabled>
   <TenTimesMetricsEnabled>true</TenTimesMetricsEnabled>
-  <OutputDir></OutputDir>
+  <OutputDir>JKMetricsLite</OutputDir>
   <AttemptBackupGenerations>1</AttemptBackupGenerations>
 </MetricsPreferences>
 ```
@@ -37,7 +37,7 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
 
 `TenTimesMetricsEnabled` controls 10 Times clear-time metrics used by `ten_times_metrics.html`.
 
-Leave `OutputDir` empty to use the default `JKMetricsLite` folder in the same folder as the mod. Relative paths are based on this mod's folder. Absolute paths are also supported.
+`OutputDir` controls where generated files are written. `JKMetricsLite` is a relative path and creates the output folder next to the mod. Absolute paths such as `C:\JumpKingMetrics` are also supported.
 
 `AttemptBackupGenerations` controls how many previous attempt folders are kept under `raw_data/attempts/`. The default is `1`, and values are capped at `10`.
 
