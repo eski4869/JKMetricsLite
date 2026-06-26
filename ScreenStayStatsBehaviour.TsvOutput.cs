@@ -12,13 +12,14 @@ namespace JKMetricsLite
         {
             var sb = new StringBuilder();
             sb.AppendLine(
-                "area_name\tsplit_ms\tduration_ms\tis_current\tis_excluded"
+                "area_name\tentry_based_split_ms\tlanding_based_split_ms\tduration_ms\tis_current\tis_excluded"
             );
 
             foreach (string area in GetRawAreaFramesInAppearedOrder())
             {
                 int frames = _areaFrames[area];
                 string firstReachedMilliseconds = "";
+                string firstLandedMilliseconds = "";
 
                 if (_areaFirstReachedMilliseconds.ContainsKey(area))
                 {
@@ -26,12 +27,30 @@ namespace JKMetricsLite
                         _areaFirstReachedMilliseconds[area].ToString();
                 }
 
+                if (_areaFirstLandedMilliseconds.ContainsKey(area))
+                {
+                    firstLandedMilliseconds =
+                        _areaFirstLandedMilliseconds[area].ToString();
+                }
+
                 sb.AppendLine(
                     EscapeTsv(area) + "\t" +
                     firstReachedMilliseconds + "\t" +
+                    firstLandedMilliseconds + "\t" +
                     FramesToMilliseconds(frames) + "\t" +
                     (area == _lastArea ? "1" : "0") + "\t" +
                     (_excludedAreas.Contains(area) ? "1" : "0")
+                );
+            }
+
+            if (_babeClearTimeMilliseconds.HasValue)
+            {
+                string clearTimeMilliseconds = _babeClearTimeMilliseconds.Value.ToString();
+
+                sb.AppendLine(
+                    CompletionAreaName + "\t" +
+                    clearTimeMilliseconds + "\t" +
+                    clearTimeMilliseconds + "\t\t0\t0"
                 );
             }
 

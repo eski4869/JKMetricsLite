@@ -496,6 +496,7 @@ namespace JKMetricsLite
         private const int MinScreen = 1;
         private const int MaxScreen = 169;
         private const int OutputIntervalFrames = 60;
+        private const string CompletionAreaName = "Babe";
         internal const string DefaultOutputFolderName = "JKMetricsLite";
 
         private static ScreenStayStatsBehaviour _instance;
@@ -506,8 +507,12 @@ namespace JKMetricsLite
         private readonly Dictionary<string, int> _areaFrames = new Dictionary<string, int>();
         private readonly Dictionary<string, long> _areaFirstReachedMilliseconds =
             new Dictionary<string, long>();
+        private readonly Dictionary<string, long> _areaFirstLandedMilliseconds =
+            new Dictionary<string, long>();
         private readonly List<string> _areaAppearedOrder = new List<string>();
         private readonly HashSet<string> _excludedAreas = new HashSet<string>();
+        private readonly HashSet<int> _endingScreens = new HashSet<int>();
+        private long? _babeClearTimeMilliseconds = null;
 
         // Area-internal screen order is also based on first-reached order.
         private readonly Dictionary<string, List<int>> _areaScreenAppearedOrder =
@@ -523,6 +528,7 @@ namespace JKMetricsLite
         private int _attemptBackupGenerations = 1;
 
         private Location[] _locations = new Location[0];
+        private BodyComp _playerBody;
 
         private int _totalFrames = 0;
         private int _outputCounter = 0;
@@ -656,6 +662,7 @@ namespace JKMetricsLite
                 _instance = null;
             }
 
+            _playerBody = null;
             JKMetricsLiteMod.ClearRegisteredAttemptMetricsBehaviour(this);
         }
 
@@ -678,6 +685,7 @@ namespace JKMetricsLite
             _attemptBackupGenerations = preparation.AttemptBackupGenerations;
             _screenMetricsHeaderChecked = false;
             _hasFlushed = false;
+            _playerBody = TryGetPlayerBody();
 
             _locations = LoadLocations();
 
@@ -697,6 +705,7 @@ namespace JKMetricsLite
                 ResetScreenMetricsFile();
             }
 
+            LoadEndingScreens();
             TrackCurrentFrame();
             WriteOutputFiles();
         }
@@ -900,6 +909,7 @@ namespace JKMetricsLite
 
                 string areaName = GetAreaNameForScreen(screen);
                 _lastArea = areaName;
+                RecordBabeClearTimeIfNeeded(screen);
 
                 // Unknown is intentionally excluded from area statistics and PB.
                 if (areaName != "Unknown")
@@ -912,6 +922,12 @@ namespace JKMetricsLite
                     if (!_areaFirstReachedMilliseconds.ContainsKey(areaName))
                     {
                         RecordAreaFirstReach(areaName);
+                    }
+
+                    if (!_areaFirstLandedMilliseconds.ContainsKey(areaName) &&
+                        IsPlayerOnGround())
+                    {
+                        RecordAreaFirstLanding(areaName);
                     }
 
                     if (!_areaAppearedOrder.Contains(areaName))

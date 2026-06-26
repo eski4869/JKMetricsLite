@@ -52,7 +52,7 @@ Existing overlay HTML files are not overwritten. Delete an HTML file and restart
 Run metrics are for the current attempt. They are useful for blind custom map playthroughs, general exploration, and speedruns.
 
 [list]
-[*][b]raw_data/attempts/current/area_progress.tsv[/b] - Current area progress: split time, duration, and display-state data.
+[*][b]raw_data/attempts/current/area_progress.tsv[/b] - Current area progress: split time, first landed time, duration, and display-state data.
 [*][b]raw_data/attempts/current/screen_order.tsv[/b] - Append log of first-reached screens.
 [*][b]raw_data/attempts/current/screen_metrics.tsv[/b] - Screen, jumps, and falls snapshots sampled about every 60 frames for the real-time progress graph or attempt recap.
 [*][b]raw_data/attempts/current/current_state.tsv[/b] - Latest screen, Now/PB progress, and graph revision.
@@ -64,7 +64,7 @@ Run metrics are restored from the attempt TSV files when continuing the same att
 [b]TSV Columns[/b]
 
 [code]area_progress.tsv
-area_name	split_ms	duration_ms	is_current	is_excluded
+area_name	entry_based_split_ms	landing_based_split_ms	duration_ms	is_current	is_excluded
 
 screen_order.tsv
 elapsed_ms	screen	area_name
@@ -86,7 +86,7 @@ attempt	map_name	clear_time_ms[/code]
 After launching the game with the mod enabled, open OBS and add a Browser Source. Enable local file mode, then select one of the generated HTML files from the obs folder.
 
 [list]
-[*][b]obs/area_name_splits.html[/b] - Shows PB, Now, area names, split times, relative duration bars, and duration.
+[*][b]obs/area_name_splits.html[/b] - Shows PB, Now, area names, first landed splits, relative duration bars, and duration.
 [*][b]obs/area_number_splits.html[/b] - Shows area numbers instead of area names.
 [*][b]obs/area_name_splits_speedrun.html[/b] - A speedrun-focused area name split table using m s ms time format.
 [*][b]obs/area_number_splits_speedrun.html[/b] - A speedrun-focused area number split table using m s ms time format.
@@ -166,7 +166,7 @@ If you enter an optional or hidden area that you do not want in the displayed ru
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
-Split times are captured from the game's run timer. Duration is counted separately from the frames processed by JK Metrics Lite.
+[b]entry_based_split_ms[/b] is captured when the area is entered and is used by the speedrun area views. [b]landing_based_split_ms[/b] is captured when the player first lands in that area and is used by the non-speedrun area views. Duration is counted separately from the frames processed by JK Metrics Lite. The final [b]Babe[/b] row uses the clear time for both split columns and leaves duration empty.
 
 [hr]
 

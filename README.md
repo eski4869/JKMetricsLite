@@ -83,7 +83,7 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 
 | Type | File | Key | Values | Update timing |
 | --- | --- | --- | --- | --- |
-| Run Progress | `raw_data/attempts/current/area_progress.tsv` | Area | Split time, duration, current and excluded flags | Rewritten about every 60 frames. |
+| Run Progress | `raw_data/attempts/current/area_progress.tsv` | Area | Split time, first landed time, duration, current and excluded flags | Rewritten about every 60 frames. |
 | Screen Order | `raw_data/attempts/current/screen_order.tsv` | Screen | First-reached screen order log | Appended when a new screen is discovered. |
 | Screen Metrics | `raw_data/attempts/current/screen_metrics.tsv` | Elapsed time | Screen, jumps, and falls snapshot samples | Appended about every 60 frames. |
 | Current State | `raw_data/attempts/current/current_state.tsv` | Current attempt | Latest screen, Now/PB progress, and graph revision | Rewritten about every 60 frames. |
@@ -96,7 +96,7 @@ Run metrics are restored from the attempt TSV files when continuing the same att
 `raw_data/attempts/current/area_progress.tsv`
 
 ```text
-area_name	split_ms	duration_ms	is_current	is_excluded
+area_name	entry_based_split_ms	landing_based_split_ms	duration_ms	is_current	is_excluded
 ```
 
 `raw_data/attempts/current/screen_order.tsv`
@@ -123,7 +123,7 @@ Add a Browser Source in OBS, enable local file mode, and select one of the gener
 
 `obs/area_name_splits.html`
 
-Automatically detects area names and displays PB, Now, split, a relative duration bar, and duration. Use this for blind custom map playthroughs or general exploration.
+Automatically detects area names and displays PB, Now, first landed split, a relative duration bar, and duration. Use this for blind custom map playthroughs or general exploration.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/5ba263eb-424e-4c66-8622-7cced2ad0310" />
 
@@ -242,7 +242,7 @@ If you enter an optional or hidden area that you do not want in the displayed ru
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
-Split times are captured from the game's run timer. Duration is counted separately from the frames processed by JK Metrics Lite.
+`entry_based_split_ms` is captured when the area is entered and is used by the speedrun area views. `landing_based_split_ms` is captured when the player first lands in that area and is used by the non-speedrun area views. Duration is counted separately from the frames processed by JK Metrics Lite. The final `Babe` row uses the clear time for both split columns and leaves duration empty.
 
 
 ## Reset Metrics

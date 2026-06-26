@@ -11,9 +11,11 @@ namespace JKMetricsLite
         {
             _areaFrames.Clear();
             _areaFirstReachedMilliseconds.Clear();
+            _areaFirstLandedMilliseconds.Clear();
             _areaAppearedOrder.Clear();
             _areaScreenAppearedOrder.Clear();
             _excludedAreas.Clear();
+            _endingScreens.Clear();
 
             _totalFrames = 0;
             _outputCounter = 0;
@@ -21,6 +23,7 @@ namespace JKMetricsLite
             _lastArea = "Unknown";
             _screenOrderRevision = 0;
             _screenMetricsHeaderChecked = false;
+            _babeClearTimeMilliseconds = null;
 
             _pbArea = "";
             _pbAreaIndex = -1;
@@ -117,6 +120,22 @@ namespace JKMetricsLite
                 Dictionary<string, string> row = rows[i];
                 string area = FormatAreaName(GetTsvValue(row, "area_name"));
 
+                if (area == CompletionAreaName)
+                {
+                    long clearTimeMilliseconds;
+
+                    if (long.TryParse(
+                        GetTsvValue(row, "entry_based_split_ms"),
+                        out clearTimeMilliseconds
+                    ))
+                    {
+                        _babeClearTimeMilliseconds =
+                            Math.Max(0, clearTimeMilliseconds);
+                    }
+
+                    continue;
+                }
+
                 if (area == "Unknown" || _areaFrames.ContainsKey(area))
                 {
                     continue;
@@ -138,12 +157,23 @@ namespace JKMetricsLite
                 long firstReachedMilliseconds;
 
                 if (long.TryParse(
-                    GetTsvValue(row, "split_ms"),
+                    GetTsvValue(row, "entry_based_split_ms"),
                     out firstReachedMilliseconds
                 ))
                 {
                     _areaFirstReachedMilliseconds[area] =
                         Math.Max(0, firstReachedMilliseconds);
+                }
+
+                long firstLandedMilliseconds;
+
+                if (long.TryParse(
+                    GetTsvValue(row, "landing_based_split_ms"),
+                    out firstLandedMilliseconds
+                ))
+                {
+                    _areaFirstLandedMilliseconds[area] =
+                        Math.Max(0, firstLandedMilliseconds);
                 }
 
                 if (GetTsvValue(row, "is_excluded") == "1")

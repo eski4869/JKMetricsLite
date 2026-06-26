@@ -31,7 +31,7 @@ namespace JKMetricsLite
 
             if (!currentStats.HasValue ||
                 !winStats.HasValue ||
-                !IsCurrentStatsAfterWin(currentStats.Value, winStats.Value))
+                !PlayerStatsReader.IsCurrentStatsAfterWin(currentStats.Value, winStats.Value))
             {
                 return;
             }
@@ -64,18 +64,6 @@ namespace JKMetricsLite
         {
             string path = ScreenStayStatsBehaviour.GetPreparedTenTimesMetricsPath();
             WriteRecords(path, new List<Record>());
-        }
-
-        private static bool IsCurrentStatsAfterWin(PlayerStats current, PlayerStats win)
-        {
-            return SameSteamLevel(current, win) &&
-                current.attempts == win.attempts + 1 &&
-                current.times_won == win.times_won + 1;
-        }
-
-        private static bool SameSteamLevel(PlayerStats left, PlayerStats right)
-        {
-            return left.steam_level_id.Equals(right.steam_level_id);
         }
 
         private static bool ContainsAttempt(List<Record> records, int attempt)

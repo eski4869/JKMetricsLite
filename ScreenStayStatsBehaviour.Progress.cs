@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using EntityComponent;
 using JumpKing.MiscSystems.Achievements;
 using JumpKing.MiscSystems.LocationText;
+using JumpKing.Player;
 
 namespace JKMetricsLite
 {
@@ -83,6 +85,219 @@ namespace JKMetricsLite
             }
 
             _areaFirstReachedMilliseconds[areaName] = firstReachedMilliseconds;
+        }
+
+        private void RecordAreaFirstLanding(string areaName)
+        {
+            long firstLandedMilliseconds = _totalFrames == 0
+                ? 0
+                : GetCurrentRunMilliseconds();
+
+            _areaFirstLandedMilliseconds[areaName] = firstLandedMilliseconds;
+        }
+
+        private void RecordBabeClearTimeIfNeeded(int screen)
+        {
+            if (_babeClearTimeMilliseconds.HasValue ||
+                !_endingScreens.Contains(screen) ||
+                !IsPlayerOnGround())
+            {
+                return;
+            }
+
+            _babeClearTimeMilliseconds = GetCurrentRunMilliseconds();
+        }
+
+        private void LoadEndingScreens()
+        {
+            _endingScreens.Clear();
+
+            if (!TryLoadCustomEndingScreens())
+            {
+                LoadOfficialEndingScreens();
+            }
+        }
+
+        private bool TryLoadCustomEndingScreens()
+        {
+            try
+            {
+                object contentManager = JumpKing.Game1.instance.contentManager;
+                FieldInfo rootField = contentManager.GetType().GetField(
+                    "root",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                string root = rootField == null
+                    ? ""
+                    : rootField.GetValue(contentManager) as string;
+
+                if (root == "Content")
+                {
+                    return false;
+                }
+
+                FieldInfo levelField = contentManager.GetType().GetField(
+                    "level",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                object level = levelField == null
+                    ? null
+                    : levelField.GetValue(contentManager);
+
+                if (level == null)
+                {
+                    return false;
+                }
+
+                PropertyInfo infoProperty = level.GetType().GetProperty(
+                    "Info",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                object info = infoProperty == null
+                    ? null
+                    : infoProperty.GetValue(level, null);
+
+                FieldInfo aboutField = info == null
+                    ? null
+                    : info.GetType().GetField(
+                        "About",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                    );
+
+                object about = aboutField == null
+                    ? null
+                    : aboutField.GetValue(info);
+
+                if (about == null)
+                {
+                    return false;
+                }
+
+                AddEndingScreenFromField(about, "ending_screen");
+                AddEndingScreenFromField(about, "ending_screen_second");
+                AddEndingScreenFromField(about, "ending_screen_third");
+
+                return _endingScreens.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                LogError("Load custom ending screens", ex);
+                return false;
+            }
+        }
+
+        private void AddEndingScreenFromField(object about, string fieldName)
+        {
+            FieldInfo field = about.GetType().GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+
+            if (field == null)
+            {
+                return;
+            }
+
+            object value = field.GetValue(about);
+
+            if (value is int)
+            {
+                AddEndingScreen((int)value);
+            }
+            else if (value != null)
+            {
+                Type valueType = value.GetType();
+                PropertyInfo hasValueProperty = valueType.GetProperty("HasValue");
+                PropertyInfo valueProperty = valueType.GetProperty("Value");
+
+                if (hasValueProperty != null &&
+                    valueProperty != null &&
+                    (bool)hasValueProperty.GetValue(value, null))
+                {
+                    AddEndingScreen((int)valueProperty.GetValue(value, null));
+                }
+            }
+        }
+
+        private void LoadOfficialEndingScreens()
+        {
+            AddOfficialEndingScreen(
+                "JumpKing.GameManager.MultiEnding.NormalEnding.NormalEnding"
+            );
+            AddOfficialEndingScreen(
+                "JumpKing.GameManager.MultiEnding.NewBabePlusEnding.NewBabePlusEnding"
+            );
+            AddOfficialEndingScreen(
+                "JumpKing.GameManager.MultiEnding.OwlEnding.OwlEnding"
+            );
+        }
+
+        private void AddOfficialEndingScreen(string typeName)
+        {
+            Type type = typeof(JumpKing.Game1).Assembly.GetType(typeName);
+
+            if (type == null)
+            {
+                return;
+            }
+
+            FieldInfo field = type.GetField(
+                "ENDING_SCREEN0",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
+            );
+
+            if (field != null && field.GetValue(null) is int)
+            {
+                AddEndingScreen((int)field.GetValue(null) + 1);
+            }
+        }
+
+        private void AddEndingScreen(int screen)
+        {
+            if (screen >= MinScreen && screen <= MaxScreen)
+            {
+                _endingScreens.Add(screen);
+            }
+        }
+
+        private long GetCurrentRunMilliseconds()
+        {
+            TimeSpan? currentRunTime = PlayerStatsReader.TryGetCurrentRunTime();
+
+            if (currentRunTime.HasValue && currentRunTime.Value.TotalMilliseconds >= 0)
+            {
+                return (long)Math.Round(currentRunTime.Value.TotalMilliseconds);
+            }
+
+            return FramesToMilliseconds(_totalFrames);
+        }
+
+        private bool IsPlayerOnGround()
+        {
+            if (_playerBody == null)
+            {
+                _playerBody = TryGetPlayerBody();
+            }
+
+            return _playerBody != null && _playerBody.IsOnGround;
+        }
+
+        private BodyComp TryGetPlayerBody()
+        {
+            try
+            {
+                PlayerEntity player = EntityManager.instance.Find<PlayerEntity>();
+
+                return player != null ? player.m_body : null;
+            }
+            catch (Exception ex)
+            {
+                LogError("Get player body", ex);
+                return null;
+            }
         }
 
         private bool RegisterAreaScreenIfNeeded(string areaName, int screen)

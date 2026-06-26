@@ -74,6 +74,32 @@ namespace JKMetricsLite
             return time.TotalMilliseconds >= 0 ? (TimeSpan?)time : null;
         }
 
+        internal static bool TryGetClearTimeMilliseconds(out long clearTimeMilliseconds)
+        {
+            clearTimeMilliseconds = 0;
+
+            PlayerStats? currentStats = TryGetCurrentStats();
+            PlayerStats? winStats = TryGetWinStats();
+
+            if (!currentStats.HasValue ||
+                !winStats.HasValue ||
+                !IsCurrentStatsAfterWin(currentStats.Value, winStats.Value))
+            {
+                return false;
+            }
+
+            clearTimeMilliseconds =
+                (long)Math.Round(winStats.Value.timeSpan.TotalMilliseconds);
+            return clearTimeMilliseconds >= 0;
+        }
+
+        internal static bool IsCurrentStatsAfterWin(PlayerStats current, PlayerStats win)
+        {
+            return current.steam_level_id.Equals(win.steam_level_id) &&
+                current.attempts == win.attempts + 1 &&
+                current.times_won == win.times_won + 1;
+        }
+
         internal static PlayerStats? TryGetCurrentStats()
         {
             try

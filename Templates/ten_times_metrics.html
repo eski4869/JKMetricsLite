@@ -48,13 +48,13 @@
     }
 
     tr.summary-start td {
-      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.6);
+      padding-top: 7px;
     }
 
-    td.label {
+    tr.summary td.area {
       color: rgba(255, 255, 255, 0.85);
       font-weight: bold;
-      text-align: right;
     }
   </style>
 </head>
@@ -151,26 +151,6 @@ function appendRow(tbody, areaName, clearTime, className) {
   tbody.appendChild(tr);
 }
 
-function appendSummaryRow(tbody, label, clearTime, className) {
-  const tr = document.createElement("tr");
-
-  if (className) {
-    tr.className = className;
-  }
-
-  const labelTd = document.createElement("td");
-  labelTd.className = "label";
-  labelTd.textContent = label;
-
-  const timeTd = document.createElement("td");
-  timeTd.className = "time";
-  timeTd.textContent = formatTime(clearTime);
-
-  tr.appendChild(labelTd);
-  tr.appendChild(timeTd);
-  tbody.appendChild(tr);
-}
-
 function render(records) {
   const tbody = document.getElementById("rows");
   tbody.innerHTML = "";
@@ -189,10 +169,10 @@ function render(records) {
   const min = Math.min(...times);
   const max = Math.max(...times);
 
-  appendSummaryRow(tbody, "avg", avg, "summary-start");
-  appendSummaryRow(tbody, "min", min, "");
-  appendSummaryRow(tbody, "max", max, "");
-  appendSummaryRow(tbody, "total", total, "");
+  appendRow(tbody, "total", total, "summary summary-start");
+  appendRow(tbody, "avg", avg, "summary");
+  appendRow(tbody, "min", min, "summary");
+  appendRow(tbody, "max", max, "summary");
 }
 
 async function update() {
