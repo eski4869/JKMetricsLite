@@ -226,12 +226,12 @@ async function updateAreaTable() {
       return;
     }
 
-    const rows = data.filter(row => row.is_excluded !== "1" && row.landing_based_split_ms !== "").map(row => {
+    const rows = data.filter(row => row.excluded !== "1" && row.landing_ms !== "").map(row => {
       return {
-        splitMs: Number(row.landing_based_split_ms),
-        areaName: row.is_unlocked === "0" ? "???" : row.area_name || "",
+        splitMs: Number(row.landing_ms),
+        areaName: row.unlocked === "0" ? "???" : row.area_name || "",
         durationMs: row.duration_ms === "" ? Number.NaN : Number(row.duration_ms) || 0,
-        isCurrent: row.is_current === "1"
+        isCurrent: row.current === "1"
       };
     });
 

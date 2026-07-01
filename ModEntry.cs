@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -36,6 +36,11 @@ namespace JKMetricsLite
             if (AreAnyMetricsEnabled())
             {
                 ScreenStayStatsBehaviour.PrepareForLevelLoad();
+
+                if (IsClearTimeMetricsEnabled())
+                {
+                    ClearTimeMetrics.PrepareForLevelLoad();
+                }
             }
             else
             {
@@ -118,7 +123,7 @@ namespace JKMetricsLite
         [OnLevelEnd]
         public static void OnLevelEnd()
         {
-            TenTimesMetrics.TryRecordCompletion();
+            ClearTimeMetrics.TryRecordCompletion();
             SaveSettingsIfDirty();
             ScreenStayStatsBehaviour.FlushOnLevelEnd();
             TotalMetricsBehaviour.FlushOnLevelEnd();
@@ -154,20 +159,20 @@ namespace JKMetricsLite
 
         [PauseMenuItemSetting]
         [MainMenuItemSetting]
-        public static TenTimesMetricsToggle TenTimesMetricsMenu(object factory, GuiFormat format)
+        public static ClearTimeMetricsToggle ClearTimeMetricsMenu(object factory, GuiFormat format)
         {
-            return new TenTimesMetricsToggle();
+            return new ClearTimeMetricsToggle();
         }
 
         [PauseMenuItemSetting]
-        public static JumpKing.PauseMenu.BT.TextButton ResetTenTimesMetricsMenu(
+        public static JumpKing.PauseMenu.BT.TextButton ResetClearTimeMetricsMenu(
             object factory,
             GuiFormat format
         )
         {
             return new JumpKing.PauseMenu.BT.TextButton(
                 "  - Reset",
-                new ResetTenTimesMetricsNode()
+                new ResetClearTimeMetricsNode()
             );
         }
 
@@ -183,10 +188,10 @@ namespace JKMetricsLite
             return _preferences.TotalMetricsEnabled;
         }
 
-        public static bool IsTenTimesMetricsEnabled()
+        public static bool IsClearTimeMetricsEnabled()
         {
             EnsurePreferencesLoaded();
-            return _preferences.TenTimesMetricsEnabled;
+            return _preferences.ClearTimeMetricsEnabled;
         }
 
         internal static bool AreAnyMetricsEnabled()
@@ -194,7 +199,7 @@ namespace JKMetricsLite
             EnsurePreferencesLoaded();
             return _preferences.AttemptMetricsEnabled ||
                 _preferences.TotalMetricsEnabled ||
-                _preferences.TenTimesMetricsEnabled;
+                _preferences.ClearTimeMetricsEnabled;
         }
 
         public static void SetAttemptMetricsEnabled(bool isEnabled)
@@ -225,16 +230,16 @@ namespace JKMetricsLite
             ApplyTotalMetricsEnabledToRegisteredBehaviour();
         }
 
-        public static void SetTenTimesMetricsEnabled(bool isEnabled)
+        public static void SetClearTimeMetricsEnabled(bool isEnabled)
         {
             EnsurePreferencesLoaded();
 
-            if (_preferences.TenTimesMetricsEnabled == isEnabled)
+            if (_preferences.ClearTimeMetricsEnabled == isEnabled)
             {
                 return;
             }
 
-            _preferences.TenTimesMetricsEnabled = isEnabled;
+            _preferences.ClearTimeMetricsEnabled = isEnabled;
             _settingsDirty = true;
         }
 
@@ -407,28 +412,28 @@ namespace JKMetricsLite
         }
     }
 
-    public class TenTimesMetricsToggle : ITextToggle
+    public class ClearTimeMetricsToggle : ITextToggle
     {
-        public TenTimesMetricsToggle() : base(JKMetricsLiteMod.IsTenTimesMetricsEnabled())
+        public ClearTimeMetricsToggle() : base(JKMetricsLiteMod.IsClearTimeMetricsEnabled())
         {
         }
 
         protected override string GetName()
         {
-            return "10 Times Metrics";
+            return "Clear Time Metrics";
         }
 
         protected override void OnToggle()
         {
-            JKMetricsLiteMod.SetTenTimesMetricsEnabled(toggle);
+            JKMetricsLiteMod.SetClearTimeMetricsEnabled(toggle);
         }
     }
 
-    public class ResetTenTimesMetricsNode : BehaviorTree.IBTnode
+    public class ResetClearTimeMetricsNode : BehaviorTree.IBTnode
     {
         protected override BehaviorTree.BTresult MyRun(BehaviorTree.TickData p_data)
         {
-            TenTimesMetrics.Reset();
+            ClearTimeMetrics.Reset();
             return BehaviorTree.BTresult.Success;
         }
     }
@@ -470,13 +475,13 @@ namespace JKMetricsLite
             {
                 return AttemptMetricsEnabled &&
                     TotalMetricsEnabled &&
-                    TenTimesMetricsEnabled;
+                    ClearTimeMetricsEnabled;
             }
             set
             {
                 AttemptMetricsEnabled = value;
                 TotalMetricsEnabled = value;
-                TenTimesMetricsEnabled = value;
+                ClearTimeMetricsEnabled = value;
             }
         }
 
@@ -487,7 +492,7 @@ namespace JKMetricsLite
 
         public bool AttemptMetricsEnabled { get; set; } = true;
         public bool TotalMetricsEnabled { get; set; } = true;
-        public bool TenTimesMetricsEnabled { get; set; } = true;
+        public bool ClearTimeMetricsEnabled { get; set; } = true;
         public string OutputDir { get; set; } = ScreenStayStatsBehaviour.DefaultOutputFolderName;
         public int AttemptBackupGenerations { get; set; } = 1;
     }
@@ -568,7 +573,7 @@ namespace JKMetricsLite
             public string ScreenOrderPath;
             public string StatePath;
             public string TotalStatsPath;
-            public string TenTimesMetricsPath;
+            public string ClearTimeMetricsPath;
             public int AttemptBackupGenerations;
         }
 
@@ -606,7 +611,7 @@ namespace JKMetricsLite
                 ScreenOrderPath = Path.Combine(currentAttemptDir, "screen_order.tsv"),
                 StatePath = Path.Combine(currentAttemptDir, "current_state.tsv"),
                 TotalStatsPath = Path.Combine(rawDataDir, "total_metrics.tsv"),
-                TenTimesMetricsPath = Path.Combine(rawDataDir, "ten_times_metrics.tsv"),
+                ClearTimeMetricsPath = Path.Combine(rawDataDir, "clear_times.tsv"),
                 AttemptBackupGenerations = JKMetricsLiteMod.GetAttemptBackupGenerations()
             };
 
@@ -615,7 +620,7 @@ namespace JKMetricsLite
             WriteOverlayHtmlIfMissing(obsDir, "area_name_splits_speedrun.html", LoadOverlayTemplate(AreaNameSplitSpeedrunTemplateName));
             WriteOverlayHtmlIfMissing(obsDir, "area_number_splits_speedrun.html", LoadOverlayTemplate(AreaNumberSplitSpeedrunTemplateName));
             WriteOverlayHtmlIfMissing(obsDir, "progress_graph.html", LoadOverlayTemplate(ScreenGraphTemplateName));
-            WriteOverlayHtmlIfMissing(obsDir, "ten_times_metrics.html", LoadOverlayTemplate(TenTimesMetricsTemplateName));
+            WriteOverlayHtmlIfMissing(obsDir, "clear_time_metrics.html", LoadOverlayTemplate(ClearTimeMetricsTemplateName));
             WriteOverlayHtmlIfMissing(localDir, "recap.html", LoadOverlayTemplate(RecapTemplateName));
 
             _levelLoadPreparation = preparation;
@@ -641,9 +646,9 @@ namespace JKMetricsLite
             return GetLevelLoadPreparation().TotalStatsPath;
         }
 
-        internal static string GetPreparedTenTimesMetricsPath()
+        internal static string GetPreparedClearTimeMetricsPath()
         {
-            return GetLevelLoadPreparation().TenTimesMetricsPath;
+            return GetLevelLoadPreparation().ClearTimeMetricsPath;
         }
 
         public ScreenStayStatsBehaviour()

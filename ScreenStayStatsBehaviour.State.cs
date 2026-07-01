@@ -124,7 +124,7 @@ namespace JKMetricsLite
                     long clearTimeMilliseconds;
 
                     if (long.TryParse(
-                        GetTsvValue(row, "entry_based_split_ms"),
+                        GetTsvValue(row, "entry_ms"),
                         out clearTimeMilliseconds
                     ))
                     {
@@ -156,7 +156,7 @@ namespace JKMetricsLite
                 long firstReachedMilliseconds;
 
                 if (long.TryParse(
-                    GetTsvValue(row, "entry_based_split_ms"),
+                    GetTsvValue(row, "entry_ms"),
                     out firstReachedMilliseconds
                 ))
                 {
@@ -167,7 +167,7 @@ namespace JKMetricsLite
                 long firstLandedMilliseconds;
 
                 if (long.TryParse(
-                    GetTsvValue(row, "landing_based_split_ms"),
+                    GetTsvValue(row, "landing_ms"),
                     out firstLandedMilliseconds
                 ))
                 {
@@ -175,12 +175,12 @@ namespace JKMetricsLite
                         Math.Max(0, firstLandedMilliseconds);
                 }
 
-                if (GetTsvValue(row, "is_excluded") == "1")
+                if (GetTsvValue(row, "excluded") == "1")
                 {
                     _excludedAreas.Add(area);
                 }
 
-                if (GetTsvValue(row, "is_current") == "1")
+                if (GetTsvValue(row, "current") == "1")
                 {
                     _lastArea = area;
                 }

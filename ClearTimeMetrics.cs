@@ -7,21 +7,31 @@ using JumpKing.MiscSystems.Achievements;
 
 namespace JKMetricsLite
 {
-    internal static class TenTimesMetrics
+    internal static class ClearTimeMetrics
     {
-        private const int MaxRecords = 10;
-        private const string Header = "attempt\tmap_name\tclear_time_ms";
+        private const int MaxRecords = 100;
+        private const string Header = "attempt\tlevel_name\tclear_time_ms\tsummary_target";
+
+        private static string _loadedPath;
+        private static List<Record> _records = new List<Record>();
 
         private sealed class Record
         {
             public int Attempt;
-            public string MapName;
+            public string LevelName;
             public long ClearTimeMilliseconds;
+            public bool SummaryTarget;
+        }
+
+        internal static void PrepareForLevelLoad()
+        {
+            string path = ScreenStayStatsBehaviour.GetPreparedClearTimeMetricsPath();
+            EnsureLoaded(path);
         }
 
         internal static void TryRecordCompletion()
         {
-            if (!JKMetricsLiteMod.IsTenTimesMetricsEnabled())
+            if (!JKMetricsLiteMod.IsClearTimeMetricsEnabled())
             {
                 return;
             }
@@ -36,34 +46,53 @@ namespace JKMetricsLite
                 return;
             }
 
-            string path = ScreenStayStatsBehaviour.GetPreparedTenTimesMetricsPath();
-            List<Record> records = ReadRecords(path);
+            string path = ScreenStayStatsBehaviour.GetPreparedClearTimeMetricsPath();
+            EnsureLoaded(path);
 
-            if (ContainsAttempt(records, winStats.Value.attempts))
+            if (ContainsAttempt(_records, winStats.Value.attempts))
             {
                 return;
             }
 
-            records.Add(new Record
+            _records.Add(new Record
             {
                 Attempt = winStats.Value.attempts,
-                MapName = GetCurrentMapTitle(),
+                LevelName = GetCurrentLevelName(),
                 ClearTimeMilliseconds =
-                    (long)Math.Round(winStats.Value.timeSpan.TotalMilliseconds)
+                    (long)Math.Round(winStats.Value.timeSpan.TotalMilliseconds),
+                SummaryTarget = true
             });
 
-            while (records.Count > MaxRecords)
+            while (_records.Count > MaxRecords)
             {
-                records.RemoveAt(0);
+                _records.RemoveAt(0);
             }
 
-            WriteRecords(path, records);
+            WriteRecords(path, _records);
         }
 
         internal static void Reset()
         {
-            string path = ScreenStayStatsBehaviour.GetPreparedTenTimesMetricsPath();
-            WriteRecords(path, new List<Record>());
+            string path = ScreenStayStatsBehaviour.GetPreparedClearTimeMetricsPath();
+            EnsureLoaded(path);
+
+            for (int i = 0; i < _records.Count; i++)
+            {
+                _records[i].SummaryTarget = false;
+            }
+
+            WriteRecords(path, _records);
+        }
+
+        private static void EnsureLoaded(string path)
+        {
+            if (_loadedPath == path)
+            {
+                return;
+            }
+
+            _records = ReadRecords(path);
+            _loadedPath = path;
         }
 
         private static bool ContainsAttempt(List<Record> records, int attempt)
@@ -90,6 +119,25 @@ namespace JKMetricsLite
 
             string[] lines = File.ReadAllLines(path, Encoding.UTF8);
 
+            if (lines.Length == 0)
+            {
+                return records;
+            }
+
+            string[] headers = lines[0].Split('\t');
+            int attemptIndex = FindHeader(headers, "attempt");
+            int levelNameIndex = FindHeader(headers, "level_name");
+            int clearTimeIndex = FindHeader(headers, "clear_time_ms");
+            int summaryTargetIndex = FindHeader(headers, "summary_target");
+
+
+            if (attemptIndex < 0 || levelNameIndex < 0 || clearTimeIndex < 0)
+            {
+                return records;
+            }
+
+            int requiredIndex = Math.Max(attemptIndex, Math.Max(levelNameIndex, clearTimeIndex));
+
             for (int i = 1; i < lines.Length; i++)
             {
                 if (string.IsNullOrWhiteSpace(lines[i]))
@@ -99,7 +147,7 @@ namespace JKMetricsLite
 
                 string[] columns = lines[i].Split('\t');
 
-                if (columns.Length < 3)
+                if (columns.Length <= requiredIndex)
                 {
                     continue;
                 }
@@ -107,8 +155,8 @@ namespace JKMetricsLite
                 int attempt;
                 long clearTimeMilliseconds;
 
-                if (!int.TryParse(columns[0], out attempt) ||
-                    !long.TryParse(columns[2], out clearTimeMilliseconds))
+                if (!int.TryParse(columns[attemptIndex], out attempt) ||
+                    !long.TryParse(columns[clearTimeIndex], out clearTimeMilliseconds))
                 {
                     continue;
                 }
@@ -116,12 +164,27 @@ namespace JKMetricsLite
                 records.Add(new Record
                 {
                     Attempt = attempt,
-                    MapName = columns[1],
-                    ClearTimeMilliseconds = clearTimeMilliseconds
+                    LevelName = columns[levelNameIndex],
+                    ClearTimeMilliseconds = clearTimeMilliseconds,
+                    SummaryTarget = summaryTargetIndex < 0 ||
+                        (summaryTargetIndex < columns.Length && columns[summaryTargetIndex] == "1")
                 });
             }
 
             return records;
+        }
+
+        private static int FindHeader(string[] headers, string name)
+        {
+            for (int i = 0; i < headers.Length; i++)
+            {
+                if (headers[i] == name)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         private static void WriteRecords(string path, List<Record> records)
@@ -137,8 +200,9 @@ namespace JKMetricsLite
                 {
                     sb.AppendLine(
                         records[i].Attempt + "\t" +
-                        EscapeTsv(records[i].MapName) + "\t" +
-                        records[i].ClearTimeMilliseconds
+                        EscapeTsv(records[i].LevelName) + "\t" +
+                        records[i].ClearTimeMilliseconds + "\t" +
+                        (records[i].SummaryTarget ? "1" : "0")
                     );
                 }
 
@@ -146,11 +210,11 @@ namespace JKMetricsLite
             }
             catch (Exception ex)
             {
-                ScreenStayStatsBehaviour.LogError("Write 10 Times metrics TSV", ex);
+                ScreenStayStatsBehaviour.LogError("Write Clear Time Metrics TSV", ex);
             }
         }
 
-        private static string GetCurrentMapTitle()
+        private static string GetCurrentLevelName()
         {
             try
             {
@@ -163,7 +227,7 @@ namespace JKMetricsLite
 
                 if (root == "Content")
                 {
-                    return GetOfficialMapTitle();
+                    return GetOfficialLevelName();
                 }
 
                 FieldInfo levelField = contentManager.GetType().GetField(
@@ -182,12 +246,12 @@ namespace JKMetricsLite
             }
             catch (Exception ex)
             {
-                ScreenStayStatsBehaviour.LogError("Get current map title", ex);
+                ScreenStayStatsBehaviour.LogError("Get current level name", ex);
                 return "";
             }
         }
 
-        private static string GetOfficialMapTitle()
+        private static string GetOfficialLevelName()
         {
             JumpKing.GameManager.MultiEnding.EndingType ending =
                 JumpKing.GameManager.MultiEnding.GameEnding.GetEnding();

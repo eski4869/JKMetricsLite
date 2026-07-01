@@ -391,11 +391,11 @@ namespace JKMetricsLite
 
             int matchCount = 0;
             bool found = false;
-            bool foundUnlocked = false;
-            Location bestLocation = default(Location);
-            Location bestUnlockedLocation = default(Location);
-            int bestStart = int.MinValue;
-            int bestUnlockedStart = int.MinValue;
+            Location firstLocation = default(Location);
+            Location closestUnlockLocation = default(Location);
+            int closestUnlockDistance = int.MaxValue;
+            int closestUnlock = int.MinValue;
+            int closestUnlockStart = int.MinValue;
 
             for (int i = 0; i < _locations.Length; i++)
             {
@@ -408,18 +408,24 @@ namespace JKMetricsLite
 
                 matchCount++;
 
-                if (location.start > bestStart)
+                if (!found)
                 {
-                    bestLocation = location;
-                    bestStart = location.start;
+                    firstLocation = location;
                     found = true;
                 }
 
-                if (screen >= location.unlock && location.start > bestUnlockedStart)
+                int unlockDistance = Math.Abs(screen - location.unlock);
+
+                if (unlockDistance < closestUnlockDistance ||
+                    (unlockDistance == closestUnlockDistance && location.unlock > closestUnlock) ||
+                    (unlockDistance == closestUnlockDistance &&
+                        location.unlock == closestUnlock &&
+                        location.start > closestUnlockStart))
                 {
-                    bestUnlockedLocation = location;
-                    bestUnlockedStart = location.start;
-                    foundUnlocked = true;
+                    closestUnlockLocation = location;
+                    closestUnlockDistance = unlockDistance;
+                    closestUnlock = location.unlock;
+                    closestUnlockStart = location.start;
                 }
             }
 
@@ -428,9 +434,9 @@ namespace JKMetricsLite
                 return false;
             }
 
-            matchedLocation = matchCount > 1 && foundUnlocked
-                ? bestUnlockedLocation
-                : bestLocation;
+            matchedLocation = matchCount > 1
+                ? closestUnlockLocation
+                : firstLocation;
 
             return true;
         }

@@ -25,7 +25,7 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
 <MetricsPreferences>
   <AttemptMetricsEnabled>true</AttemptMetricsEnabled>
   <TotalMetricsEnabled>true</TotalMetricsEnabled>
-  <TenTimesMetricsEnabled>true</TenTimesMetricsEnabled>
+  <ClearTimeMetricsEnabled>true</ClearTimeMetricsEnabled>
   <OutputDir>JKMetricsLite</OutputDir>
   <AttemptBackupGenerations>1</AttemptBackupGenerations>
 </MetricsPreferences>
@@ -35,7 +35,7 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
 
 `TotalMetricsEnabled` controls long-term total metrics used by `recap.html`.
 
-`TenTimesMetricsEnabled` controls 10 Times clear-time metrics used by `ten_times_metrics.html`.
+`ClearTimeMetricsEnabled` controls Clear Time Metrics used by `clear_time_metrics.html`.
 
 `OutputDir` controls where generated files are written. `JKMetricsLite` is a relative path and creates the output folder next to the mod. Absolute paths such as `C:\JumpKingMetrics` are also supported.
 
@@ -45,30 +45,30 @@ Generated files are organized by purpose:
 
 ```text
 JKMetricsLite/
-|-- raw_data/
-|   |-- attempts/
-|   |   |-- current/
-|   |   |   |-- area_progress.tsv
-|   |   |   |-- screen_order.tsv
-|   |   |   |-- screen_metrics.tsv
-|   |   |   `-- current_state.tsv
-|   |   `-- 777/
-|   |       |-- area_progress.tsv
-|   |       |-- screen_order.tsv
-|   |       |-- screen_metrics.tsv
-|   |       `-- current_state.tsv
-|   |-- total_metrics.tsv
-|   `-- ten_times_metrics.tsv
-|-- obs/
-|   |-- area_name_splits.html
-|   |-- area_number_splits.html
-|   |-- area_name_splits_speedrun.html
-|   |-- area_number_splits_speedrun.html
-|   |-- progress_graph.html
-|   `-- ten_times_metrics.html
-|-- local/
-|   `-- recap.html
-`-- error.log
+├─ raw_data/
+│  ├─ attempts/
+│  │  ├─ current/
+│  │  │  ├─ area_progress.tsv
+│  │  │  ├─ screen_order.tsv
+│  │  │  ├─ screen_metrics.tsv
+│  │  │  └─ current_state.tsv
+│  │  └─ 777/
+│  │     ├─ area_progress.tsv
+│  │     ├─ screen_order.tsv
+│  │     ├─ screen_metrics.tsv
+│  │     └─ current_state.tsv
+│  ├─ total_metrics.tsv
+│  └─ clear_times.tsv
+├─ obs/
+│  ├─ area_name_splits.html
+│  ├─ area_number_splits.html
+│  ├─ area_name_splits_speedrun.html
+│  ├─ area_number_splits_speedrun.html
+│  ├─ progress_graph.html
+│  └─ clear_time_metrics.html
+├─ local/
+│  └─ recap.html
+└─ error.log
 ```
 
 - `raw_data` contains simple TSV data for overlays or custom analysis.
@@ -83,7 +83,7 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 
 | Type | File | Key | Values | Update timing |
 | --- | --- | --- | --- | --- |
-| Run Progress | `raw_data/attempts/current/area_progress.tsv` | Area | Split time, first landed time, duration, current and excluded flags | Rewritten about every 60 frames. |
+| Run Progress | `raw_data/attempts/current/area_progress.tsv` | Area | Entry split, landing split, duration, current/excluded/unlocked flags | Rewritten about every 60 frames. |
 | Screen Order | `raw_data/attempts/current/screen_order.tsv` | Screen | First-reached screen order log | Appended when a new screen is discovered. |
 | Screen Metrics | `raw_data/attempts/current/screen_metrics.tsv` | Elapsed time | Screen, jumps, and falls snapshot samples | Appended about every 60 frames. |
 | Current State | `raw_data/attempts/current/current_state.tsv` | Current attempt | Latest screen, Now/PB progress, and graph revision | Rewritten about every 60 frames. |
@@ -95,27 +95,46 @@ Run metrics are restored from the attempt TSV files when continuing the same att
 
 `raw_data/attempts/current/area_progress.tsv`
 
-```text
-area_name	entry_based_split_ms	landing_based_split_ms	duration_ms	is_current	is_excluded
-```
+| Column | Format | Meaning |
+| --- | --- | --- |
+| `area_name` | Text | Area name. `Unknown`, `Babe Screen`, and `Clear Time` can also appear. |
+| `entry_ms` | Milliseconds | Game time when the area was entered. Used by speedrun views. |
+| `landing_ms` | Milliseconds or empty | Game time when the player first landed in the area. Used by non-speedrun views. |
+| `duration_ms` | Milliseconds or empty | Time spent in the area. Empty for `Clear Time`. |
+| `current` | `0` or `1` | `1` when this is the current area. |
+| `excluded` | `0` or `1` | `1` when this area is excluded from bundled metrics views. |
+| `unlocked` | `0` or `1` | `1` when the area name can be shown without spoiler masking. |
 
 `raw_data/attempts/current/screen_order.tsv`
 
-```text
-elapsed_ms	screen	area_name
-```
+| Column | Format | Meaning |
+| --- | --- | --- |
+| `screen` | Integer | First-reached physical screen number. |
+| `area_name` | Text | Area name detected for that screen. |
+| `first_reached_ms` | Milliseconds | Game time when the screen was first reached. |
 
 `raw_data/attempts/current/screen_metrics.tsv`
 
-```text
-elapsed_ms	screen	jumps	falls
-```
+| Column | Format | Meaning |
+| --- | --- | --- |
+| `elapsed_ms` | Milliseconds | Game time when the sample was recorded. |
+| `screen` | Integer | Current physical screen number. |
+| `jumps` | Integer | Total jumps at that sample. |
+| `falls` | Integer | Total falls at that sample. |
 
 `raw_data/attempts/current/current_state.tsv`
 
-```text
-attempt	elapsed_ms	screen	area_name	current_area_order	current_screen_order	pb_area_order	pb_screen_order	screen_order_revision
-```
+| Column | Format | Meaning |
+| --- | --- | --- |
+| `attempt` | Integer or `UNKNOWN` | Current attempt number. |
+| `elapsed_ms` | Milliseconds | Current game time. |
+| `screen` | Integer | Current physical screen number. |
+| `area_name` | Text | Current area name. |
+| `current_area_order` | Integer | Current area progress order used by OBS views. |
+| `current_screen_order` | Integer | Current screen order inside the current area. |
+| `pb_area_order` | Integer | PB area progress order. |
+| `pb_screen_order` | Integer | PB screen order inside the PB area. |
+| `screen_order_revision` | Integer | Incremented when the progress graph mapping needs a rebuild. |
 
 ### OBS Views
 
@@ -151,9 +170,9 @@ Displays screen progress as a real-time graph.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/8ca9df05-ac2a-472f-b7b4-a4ae0f5e8b64" />
 
-`obs/ten_times_metrics.html`
+`obs/clear_time_metrics.html`
 
-Displays recent 10 Times clear records with area name, clear time, average, minimum, maximum, and total.
+Displays recent clear-time records with area name, clear time, average, minimum, maximum, and total.
 
 In practice, crop the overlay and use only the parts you need. The image below is an example stream layout.
 
@@ -169,9 +188,12 @@ Long-term metrics are accumulated across play sessions and are not reset with ru
 
 `raw_data/total_metrics.tsv`
 
-```text
-sampled_at	total_frames	total_jumps	total_falls
-```
+| Column | Format | Meaning |
+| --- | --- | --- |
+| `sampled_at` | ISO timestamp | Local timestamp when the sample was recorded. |
+| `total_frames` | Integer | Total game frames. |
+| `total_jumps` | Integer | Total jumps. |
+| `total_falls` | Integer | Total falls. |
 
 Open `local/recap.html` directly in a browser and select `raw_data/total_metrics.tsv` to view jump-based recaps, including total jumps/falls, active days, streaks, best day/month/weekday/hour, hourly heatmaps, and monthly jumps/falls.
 
@@ -179,28 +201,33 @@ The TSV file is selected manually so the page can work when opened directly in a
 
 <img width="661" height="579" alt="image" src="https://github.com/user-attachments/assets/99ae0f5a-647a-4e57-9f21-52c9dc95011c" />
 
-## 10 Times Metrics
+## Clear Time Metrics
 
-10 Times metrics keep the latest clear-time records for categories where repeated clears are useful, such as 10 Times or All Maps style practice.
+Clear Time Metrics keep the latest clear-time records for categories where repeated clears are useful, such as 10 Times or All Maps style practice.
 
 | Type | File | Key | Values | Update timing |
 | --- | --- | --- | --- | --- |
-| 10 Times Metrics | `raw_data/ten_times_metrics.tsv` | Attempt | Map name and clear time | Rewritten on clear, keeping up to 10 records. |
+| Clear Time Metrics | `raw_data/clear_times.tsv` | Attempt | Level name, clear time, and summary target | Rewritten on clear or reset, keeping up to 100 records. |
 
-`raw_data/ten_times_metrics.tsv`
+`raw_data/clear_times.tsv`
 
-```text
-attempt	map_name	clear_time_ms
-```
+| Column | Format | Meaning |
+| --- | --- | --- |
+| `attempt` | Integer | Attempt number when the clear was recorded. |
+| `level_name` | Text | Level name. |
+| `clear_time_ms` | Milliseconds | Clear time. |
+| `summary_target` | `0` or `1` | `1` when the row is included in the OBS summary. |
 
-Open `obs/ten_times_metrics.html` in OBS to display recent clears, average, minimum, maximum, and total.
+`summary_target` uses `1` for rows included in the OBS summary and `0` for rows kept only as history. New clear records are added with `1`; the Reset menu action changes existing records to `0`.
+
+Open `obs/clear_time_metrics.html` in OBS to display target clears, average, minimum, maximum, and total.
 
 
 ## Area and PB Logic
 
 Areas are detected from the map's `location_settings.xml` data.
 
-If multiple areas match the same screen, the area with the highest `start` value takes priority. For example, screen 10 is treated as `LOCATION_FALSE_KINGS_KEEP`, not `LOCATION_COLOSSAL_DRAIN`.
+If multiple areas match the same screen, the area whose `unlock` value is closest to that screen takes priority. If there is still a tie, the higher `unlock` and then higher `start` value wins. For example, screen 10 is treated as `LOCATION_FALSE_KINGS_KEEP`, not `LOCATION_COLOSSAL_DRAIN`.
 
 ```xml
 <Location>
@@ -238,11 +265,11 @@ Screens that do not belong to any defined area are ignored for PB, split times, 
 
 Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
 
-If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and enable `Exclude This Area`. The area is ignored for PB and hidden by the bundled area views. Its row remains in `area_progress.tsv` with `is_excluded` set to `1`, so disabling the option restores the accumulated split time and duration. In an `Unknown` area, the option is shown as checked and cannot be changed because that area is already excluded by definition.
+If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and enable `Exclude This Area`. The area is ignored for PB and hidden by the bundled area views. Its row remains in `area_progress.tsv` with `excluded` set to `1`, so disabling the option restores the accumulated split time and duration. In an `Unknown` area, the option is shown as checked and cannot be changed because that area is already excluded by definition.
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
-`entry_based_split_ms` is captured when the area is entered and is used by the speedrun area views. `landing_based_split_ms` is captured when the player first lands in that area and is used by the non-speedrun area views. Duration is counted separately from the frames processed by JK Metrics Lite. The final `Babe` row uses the clear time for both split columns and leaves duration empty.
+`entry_ms` is captured when the area is entered and is used by the speedrun area views. `landing_ms` is captured when the player first lands in that area and is used by the non-speedrun area views. Duration is counted separately from the frames processed by JK Metrics Lite. The final `Babe` row uses the clear time for both entry and landing columns and leaves duration empty.
 
 
 ## Reset Metrics

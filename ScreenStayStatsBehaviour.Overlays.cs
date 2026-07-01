@@ -13,7 +13,7 @@ namespace JKMetricsLite
         private const string AreaNumberSplitSpeedrunTemplateName = "area_number_splits_speedrun.html";
         private const string ScreenGraphTemplateName = "progress_graph.html";
         private const string RecapTemplateName = "recap.html";
-        private const string TenTimesMetricsTemplateName = "ten_times_metrics.html";
+        private const string ClearTimeMetricsTemplateName = "clear_time_metrics.html";
 
         private static void WriteOverlayHtmlIfMissing(string outputDir, string fileName, string html)
         {

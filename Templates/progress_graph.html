@@ -124,7 +124,7 @@ function buildAreaLayoutSignature(areaRows) {
     })
     .map(row => {
       const areaName = row.area_name || "";
-      const isExcluded = row.is_excluded === "1" ? "1" : "0";
+      const isExcluded = row.excluded === "1" ? "1" : "0";
       return areaName + "\t" + isExcluded;
     })
     .join("\n");
@@ -226,7 +226,7 @@ async function loadScreenToProgressMap() {
   areaRows.forEach(row => {
     const areaName = row.area_name || "";
 
-    if (areaName === "" || areaName === "Unknown" || row.is_excluded === "1") {
+    if (areaName === "" || areaName === "Unknown" || row.excluded === "1") {
       return;
     }
 

@@ -31,7 +31,7 @@ If your Steam library is installed somewhere else, the first part of the path wi
 
 To change the output folder, edit OutputDir in eski4869.JKMetricsLite.Settings.xml. JKMetricsLite is a relative path and creates the output folder next to the mod. Absolute paths such as C:\JumpKingMetrics are also supported. Restart the game after editing the settings file.
 
-The mod menu has separate toggles for Attempt Metrics, Total Metrics, and 10 Times Metrics.
+The mod menu has separate toggles for Attempt Metrics, Total Metrics, and Clear Time Metrics.
 
 AttemptBackupGenerations controls how many previous attempt folders are kept under raw_data/attempts. The default is 1, and values are capped at 10.
 
@@ -64,10 +64,10 @@ Run metrics are restored from the attempt TSV files when continuing the same att
 [b]TSV Columns[/b]
 
 [code]area_progress.tsv
-area_name	entry_based_split_ms	landing_based_split_ms	duration_ms	is_current	is_excluded
+area_name	entry_ms	landing_ms	duration_ms	current	excluded	unlocked
 
 screen_order.tsv
-elapsed_ms	screen	area_name
+screen	area_name	first_reached_ms
 
 screen_metrics.tsv
 elapsed_ms	screen	jumps	falls
@@ -78,8 +78,8 @@ attempt	elapsed_ms	screen	area_name	current_area_order	current_screen_order	pb_a
 total_metrics.tsv
 sampled_at	total_frames	total_jumps	total_falls
 
-ten_times_metrics.tsv
-attempt	map_name	clear_time_ms[/code]
+clear_times.tsv
+attempt	level_name	clear_time_ms	summary_target[/code]
 
 [b]OBS Views[/b]
 
@@ -91,7 +91,7 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 [*][b]obs/area_name_splits_speedrun.html[/b] - A speedrun-focused area name split table using m s ms time format.
 [*][b]obs/area_number_splits_speedrun.html[/b] - A speedrun-focused area number split table using m s ms time format.
 [*][b]obs/progress_graph.html[/b] - Displays screen progress as a real-time graph.
-[*][b]obs/ten_times_metrics.html[/b] - Displays recent 10 Times clear records with area name, clear time, average, minimum, maximum, and total.
+[*][b]obs/clear_time_metrics.html[/b] - Displays recent clear-time records with area name, clear time, average, minimum, maximum, and total.
 [/list]
 
 [hr]
@@ -112,15 +112,17 @@ The TSV file is selected manually so the page can work when opened directly in a
 
 [hr]
 
-[h2]10 Times Metrics[/h2]
+[h2]Clear Time Metrics[/h2]
 
-10 Times metrics keep the latest clear-time records for categories where repeated clears are useful, such as 10 Times or All Maps style practice.
+Clear Time Metrics keep the latest clear-time records for categories where repeated clears are useful, such as 10 Times or All Maps style practice.
 
 [list]
-[*][b]raw_data/ten_times_metrics.tsv[/b] - Latest clear-time records with attempt, map name, and clear time.
+[*][b]raw_data/clear_times.tsv[/b] - Latest clear-time records with attempt, level name, clear time, and summary target.
 [/list]
 
-Open obs/ten_times_metrics.html in OBS to display recent clears, average, minimum, maximum, and total.
+[b]summary_target[/b] uses 1 for rows included in the OBS summary and 0 for rows kept only as history. New clear records are added with 1; the Reset menu action changes existing records to 0.
+
+Open obs/clear_time_metrics.html in OBS to display target clears, average, minimum, maximum, and total.
 
 [hr]
 
@@ -162,11 +164,11 @@ Screens that do not belong to any defined area are ignored for PB, split times, 
 
 Area numbers are assigned by first reach order, not by screen order. This avoids revealing the map's intended area order during blind play, but hidden or optional areas can change the numbering if you enter them early.
 
-If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and enable [b]Exclude This Area[/b]. The area is ignored for PB and hidden by the bundled area views. Its row remains in area_progress.tsv with is_excluded set to 1, so disabling the option restores the accumulated split time and duration. In an [b]Unknown[/b] area, the option is shown as checked and cannot be changed because that area is already excluded by definition.
+If you enter an optional or hidden area that you do not want in the displayed run metrics, open the pause menu in that area and enable [b]Exclude This Area[/b]. The area is ignored for PB and hidden by the bundled area views. Its row remains in area_progress.tsv with excluded set to 1, so disabling the option restores the accumulated split time and duration. In an [b]Unknown[/b] area, the option is shown as checked and cannot be changed because that area is already excluded by definition.
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
-[b]entry_based_split_ms[/b] is captured when the area is entered and is used by the speedrun area views. [b]landing_based_split_ms[/b] is captured when the player first lands in that area and is used by the non-speedrun area views. Duration is counted separately from the frames processed by JK Metrics Lite. The final [b]Babe[/b] row uses the clear time for both split columns and leaves duration empty.
+[b]entry_ms[/b] is captured when the area is entered and is used by the speedrun area views. [b]landing_ms[/b] is captured when the player first lands in that area and is used by the non-speedrun area views. Duration is counted separately from the frames processed by JK Metrics Lite. The final [b]Babe[/b] row uses the clear time for both entry and landing columns and leaves duration empty.
 
 [hr]
 

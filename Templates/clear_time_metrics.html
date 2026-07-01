@@ -31,8 +31,8 @@
       text-align: center;
     }
 
-    th.area,
-    td.area {
+    th.level,
+    td.level {
       width: 24ch;
       max-width: 24ch;
       white-space: normal;
@@ -52,7 +52,7 @@
       padding-top: 7px;
     }
 
-    tr.summary td.area {
+    tr.summary td.level {
       color: rgba(255, 255, 255, 0.85);
       font-weight: bold;
     }
@@ -62,7 +62,7 @@
 <table>
   <thead>
     <tr>
-      <th class="area">Area Name</th>
+      <th class="level">Level Name</th>
       <th class="time">Clear Time</th>
     </tr>
   </thead>
@@ -70,7 +70,7 @@
 </table>
 
 <script>
-const filePath = "../raw_data/ten_times_metrics.tsv";
+const filePath = "../raw_data/clear_times.tsv";
 const refreshMs = 1000;
 
 async function fetchText(path) {
@@ -86,10 +86,11 @@ function parseTsv(text) {
   }
 
   const header = lines[0].split("\t");
-  const mapIndex = header.indexOf("map_name");
+  const levelIndex = header.indexOf("level_name");
   const timeIndex = header.indexOf("clear_time_ms");
+  const summaryTargetIndex = header.indexOf("summary_target");
 
-  if (mapIndex < 0 || timeIndex < 0) {
+  if (levelIndex < 0 || timeIndex < 0) {
     return [];
   }
 
@@ -108,8 +109,9 @@ function parseTsv(text) {
     }
 
     records.push({
-      areaName: columns[mapIndex] || "-",
-      clearTime
+      levelName: columns[levelIndex] || "-",
+      clearTime,
+      summaryTarget: summaryTargetIndex < 0 || columns[summaryTargetIndex] === "1"
     });
   }
 
@@ -131,22 +133,22 @@ function formatTime(ms) {
     String(milliseconds).padStart(3, "0") + "ms";
 }
 
-function appendRow(tbody, areaName, clearTime, className) {
+function appendRow(tbody, levelName, clearTime, className) {
   const tr = document.createElement("tr");
 
   if (className) {
     tr.className = className;
   }
 
-  const areaTd = document.createElement("td");
-  areaTd.className = "area";
-  areaTd.textContent = areaName;
+  const levelTd = document.createElement("td");
+  levelTd.className = "level";
+  levelTd.textContent = levelName;
 
   const timeTd = document.createElement("td");
   timeTd.className = "time";
   timeTd.textContent = formatTime(clearTime);
 
-  tr.appendChild(areaTd);
+  tr.appendChild(levelTd);
   tr.appendChild(timeTd);
   tbody.appendChild(tr);
 }
@@ -155,17 +157,19 @@ function render(records) {
   const tbody = document.getElementById("rows");
   tbody.innerHTML = "";
 
-  if (records.length === 0) {
+  const summaryRecords = records.filter(record => record.summaryTarget);
+
+  if (summaryRecords.length === 0) {
     return;
   }
 
-  for (const record of records) {
-    appendRow(tbody, record.areaName, record.clearTime, "");
+  for (const record of summaryRecords) {
+    appendRow(tbody, record.levelName, record.clearTime, "");
   }
 
-  const times = records.map(record => record.clearTime);
+  const times = summaryRecords.map(record => record.clearTime);
   const total = times.reduce((sum, value) => sum + value, 0);
-  const avg = total / records.length;
+  const avg = total / summaryRecords.length;
   const min = Math.min(...times);
   const max = Math.max(...times);
 
