@@ -15,7 +15,6 @@ namespace JKMetricsLite
             _areaAppearedOrder.Clear();
             _areaScreenAppearedOrder.Clear();
             _excludedAreas.Clear();
-            _endingScreens.Clear();
 
             _totalFrames = 0;
             _outputCounter = 0;

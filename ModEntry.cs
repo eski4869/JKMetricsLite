@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -6,6 +6,7 @@ using System.Text;
 using System.Xml.Serialization;
 using EntityComponent;
 using JumpKing.API;
+using JumpKing.GameManager.MultiEnding;
 using JumpKing.MiscSystems.Achievements;
 using JumpKing.MiscSystems.LocationText;
 using JumpKing.Mods;
@@ -496,7 +497,9 @@ namespace JKMetricsLite
         private const int MinScreen = 1;
         private const int MaxScreen = 169;
         private const int OutputIntervalFrames = 60;
-        private const string CompletionAreaName = "Babe";
+        private const int PerformanceLogIntervalFrames = 600;
+        private const string BabeScreenAreaName = "Babe Screen";
+        private const string CompletionAreaName = "Clear Time";
         internal const string DefaultOutputFolderName = "JKMetricsLite";
 
         private static ScreenStayStatsBehaviour _instance;
@@ -511,8 +514,15 @@ namespace JKMetricsLite
             new Dictionary<string, long>();
         private readonly List<string> _areaAppearedOrder = new List<string>();
         private readonly HashSet<string> _excludedAreas = new HashSet<string>();
-        private readonly HashSet<int> _endingScreens = new HashSet<int>();
+        private readonly HashSet<int> _babeScreens = new HashSet<int>();
         private long? _babeClearTimeMilliseconds = null;
+        private readonly IEnding[] _officialEndings = new IEnding[]
+        {
+            new JumpKing.GameManager.MultiEnding.NormalEnding.NormalEnding(),
+            new JumpKing.GameManager.MultiEnding.NewBabePlusEnding.NewBabePlusEnding(),
+            new JumpKing.GameManager.MultiEnding.OwlEnding.OwlEnding()
+        };
+        private PlayerEntity _player;
 
         // Area-internal screen order is also based on first-reached order.
         private readonly Dictionary<string, List<int>> _areaScreenAppearedOrder =
@@ -532,6 +542,9 @@ namespace JKMetricsLite
 
         private int _totalFrames = 0;
         private int _outputCounter = 0;
+        private int _performanceLogCounter = 0;
+        private readonly Dictionary<string, PerformanceTiming> _performanceTimings =
+            new Dictionary<string, PerformanceTiming>();
         private int _lastScreen = -1;
         private string _lastArea = "Unknown";
         private int _screenOrderRevision = 0;
@@ -663,6 +676,7 @@ namespace JKMetricsLite
             }
 
             _playerBody = null;
+            _player = null;
             JKMetricsLiteMod.ClearRegisteredAttemptMetricsBehaviour(this);
         }
 
@@ -685,9 +699,11 @@ namespace JKMetricsLite
             _attemptBackupGenerations = preparation.AttemptBackupGenerations;
             _screenMetricsHeaderChecked = false;
             _hasFlushed = false;
-            _playerBody = TryGetPlayerBody();
+            _player = EntityManager.instance.Find<PlayerEntity>();
+            _playerBody = _player != null ? _player.m_body : TryGetPlayerBody();
 
             _locations = LoadLocations();
+            LoadBabeScreens();
 
             int? currentAttempt = TryGetCurrentAttempt();
             bool loaded = LoadRunDataIfSameAttempt(currentAttempt);
@@ -705,7 +721,6 @@ namespace JKMetricsLite
                 ResetScreenMetricsFile();
             }
 
-            LoadEndingScreens();
             TrackCurrentFrame();
             WriteOutputFiles();
         }
@@ -896,6 +911,8 @@ namespace JKMetricsLite
 
         private void TrackCurrentFrame()
         {
+            var frameStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             if (_locations == null || _locations.Length == 0)
             {
                 _locations = LoadLocations();
@@ -909,7 +926,6 @@ namespace JKMetricsLite
 
                 string areaName = GetAreaNameForScreen(screen);
                 _lastArea = areaName;
-                RecordBabeClearTimeIfNeeded(screen);
 
                 // Unknown is intentionally excluded from area statistics and PB.
                 if (areaName != "Unknown")
@@ -942,7 +958,12 @@ namespace JKMetricsLite
 
                     _areaFrames[areaName]++;
                 }
+
+                RecordClearTimeIfNeeded();
             }
+
+            frameStopwatch.Stop();
+            AddPerformanceTiming("frame_tracking", frameStopwatch.Elapsed.TotalMilliseconds);
 
             _totalFrames++;
             _outputCounter++;
@@ -954,6 +975,7 @@ namespace JKMetricsLite
                 AppendScreenMetricTsv();
             }
 
+            MaybeWritePerformanceLog();
         }
 
         private void WriteOutputFiles()
@@ -963,4 +985,9 @@ namespace JKMetricsLite
         }
     }
 }
+
+
+
+
+
 

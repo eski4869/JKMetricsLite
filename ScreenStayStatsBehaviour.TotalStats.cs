@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -401,7 +401,14 @@ namespace JKMetricsLite
                     totals.TotalFalls
                 );
 
-                File.AppendAllText(_totalMetricsPath, sb.ToString(), Encoding.UTF8);
+                string output = sb.ToString();
+                var ioStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                File.AppendAllText(_totalMetricsPath, output, Encoding.UTF8);
+                ioStopwatch.Stop();
+                ScreenStayStatsBehaviour.RecordPerformanceTiming(
+                    "total_metrics_io",
+                    ioStopwatch.Elapsed.TotalMilliseconds
+                );
             }
             catch (Exception ex)
             {
@@ -450,3 +457,4 @@ namespace JKMetricsLite
         }
     }
 }
+

@@ -96,170 +96,56 @@ namespace JKMetricsLite
             _areaFirstLandedMilliseconds[areaName] = firstLandedMilliseconds;
         }
 
-        private void RecordBabeClearTimeIfNeeded(int screen)
+        private void RecordClearTimeIfNeeded()
         {
             if (_babeClearTimeMilliseconds.HasValue ||
-                !_endingScreens.Contains(screen) ||
-                !IsPlayerOnGround())
+                !IsOfficialWinConditionMet())
             {
                 return;
             }
 
-            _babeClearTimeMilliseconds = GetCurrentRunMilliseconds();
+            _babeClearTimeMilliseconds =
+                GetCurrentRunMilliseconds() + FramesToMilliseconds(1);
+
+            WriteAreaProgressTsv();
         }
 
-        private void LoadEndingScreens()
+        private bool IsOfficialWinConditionMet()
         {
-            _endingScreens.Clear();
-
-            if (!TryLoadCustomEndingScreens())
+            if (_player == null)
             {
-                LoadOfficialEndingScreens();
+                _player = EntityManager.instance.Find<PlayerEntity>();
             }
-        }
 
-        private bool TryLoadCustomEndingScreens()
-        {
-            try
+            if (_player == null)
             {
-                object contentManager = JumpKing.Game1.instance.contentManager;
-                FieldInfo rootField = contentManager.GetType().GetField(
-                    "root",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                string root = rootField == null
-                    ? ""
-                    : rootField.GetValue(contentManager) as string;
-
-                if (root == "Content")
-                {
-                    return false;
-                }
-
-                FieldInfo levelField = contentManager.GetType().GetField(
-                    "level",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                object level = levelField == null
-                    ? null
-                    : levelField.GetValue(contentManager);
-
-                if (level == null)
-                {
-                    return false;
-                }
-
-                PropertyInfo infoProperty = level.GetType().GetProperty(
-                    "Info",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                );
-
-                object info = infoProperty == null
-                    ? null
-                    : infoProperty.GetValue(level, null);
-
-                FieldInfo aboutField = info == null
-                    ? null
-                    : info.GetType().GetField(
-                        "About",
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                    );
-
-                object about = aboutField == null
-                    ? null
-                    : aboutField.GetValue(info);
-
-                if (about == null)
-                {
-                    return false;
-                }
-
-                AddEndingScreenFromField(about, "ending_screen");
-                AddEndingScreenFromField(about, "ending_screen_second");
-                AddEndingScreenFromField(about, "ending_screen_third");
-
-                return _endingScreens.Count > 0;
-            }
-            catch (Exception ex)
-            {
-                LogError("Load custom ending screens", ex);
                 return false;
             }
-        }
 
-        private void AddEndingScreenFromField(object about, string fieldName)
-        {
-            FieldInfo field = about.GetType().GetField(
-                fieldName,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-            );
-
-            if (field == null)
+            for (int i = 0; i < _officialEndings.Length; i++)
             {
-                return;
-            }
-
-            object value = field.GetValue(about);
-
-            if (value is int)
-            {
-                AddEndingScreen((int)value);
-            }
-            else if (value != null)
-            {
-                Type valueType = value.GetType();
-                PropertyInfo hasValueProperty = valueType.GetProperty("HasValue");
-                PropertyInfo valueProperty = valueType.GetProperty("Value");
-
-                if (hasValueProperty != null &&
-                    valueProperty != null &&
-                    (bool)hasValueProperty.GetValue(value, null))
+                if (_officialEndings[i].CheckWin(_player))
                 {
-                    AddEndingScreen((int)valueProperty.GetValue(value, null));
+                    return true;
                 }
             }
+
+            return false;
         }
 
-        private void LoadOfficialEndingScreens()
+        private void LoadBabeScreens()
         {
-            AddOfficialEndingScreen(
-                "JumpKing.GameManager.MultiEnding.NormalEnding.NormalEnding"
-            );
-            AddOfficialEndingScreen(
-                "JumpKing.GameManager.MultiEnding.NewBabePlusEnding.NewBabePlusEnding"
-            );
-            AddOfficialEndingScreen(
-                "JumpKing.GameManager.MultiEnding.OwlEnding.OwlEnding"
-            );
+            _babeScreens.Clear();
+            AddBabeScreen(JumpKing.GameManager.MultiEnding.NormalEnding.NormalEnding.ENDING_SCREEN0 + 1);
+            AddBabeScreen(JumpKing.GameManager.MultiEnding.NewBabePlusEnding.NewBabePlusEnding.ENDING_SCREEN0 + 1);
+            AddBabeScreen(JumpKing.GameManager.MultiEnding.OwlEnding.OwlEnding.ENDING_SCREEN0 + 1);
         }
 
-        private void AddOfficialEndingScreen(string typeName)
-        {
-            Type type = typeof(JumpKing.Game1).Assembly.GetType(typeName);
-
-            if (type == null)
-            {
-                return;
-            }
-
-            FieldInfo field = type.GetField(
-                "ENDING_SCREEN0",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic
-            );
-
-            if (field != null && field.GetValue(null) is int)
-            {
-                AddEndingScreen((int)field.GetValue(null) + 1);
-            }
-        }
-
-        private void AddEndingScreen(int screen)
+        private void AddBabeScreen(int screen)
         {
             if (screen >= MinScreen && screen <= MaxScreen)
             {
-                _endingScreens.Add(screen);
+                _babeScreens.Add(screen);
             }
         }
 
@@ -479,6 +365,11 @@ namespace JKMetricsLite
 
         private string GetAreaNameForScreen(int screen)
         {
+            if (_babeScreens.Contains(screen))
+            {
+                return BabeScreenAreaName;
+            }
+
             Location location;
 
             if (TryGetLocationForScreen(screen, out location))
@@ -498,25 +389,97 @@ namespace JKMetricsLite
                 return false;
             }
 
+            int matchCount = 0;
             bool found = false;
+            bool foundUnlocked = false;
+            Location bestLocation = default(Location);
+            Location bestUnlockedLocation = default(Location);
             int bestStart = int.MinValue;
+            int bestUnlockedStart = int.MinValue;
 
             for (int i = 0; i < _locations.Length; i++)
             {
                 Location location = _locations[i];
 
-                if (screen >= location.start && screen <= location.end)
+                if (screen < location.start || screen > location.end)
                 {
-                    if (location.start > bestStart)
+                    continue;
+                }
+
+                matchCount++;
+
+                if (location.start > bestStart)
+                {
+                    bestLocation = location;
+                    bestStart = location.start;
+                    found = true;
+                }
+
+                if (screen >= location.unlock && location.start > bestUnlockedStart)
+                {
+                    bestUnlockedLocation = location;
+                    bestUnlockedStart = location.start;
+                    foundUnlocked = true;
+                }
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            matchedLocation = matchCount > 1 && foundUnlocked
+                ? bestUnlockedLocation
+                : bestLocation;
+
+            return true;
+        }
+
+        private bool IsAreaUnlocked(string areaName)
+        {
+            if (string.IsNullOrEmpty(areaName) ||
+                areaName == "Unknown" ||
+                areaName == BabeScreenAreaName ||
+                areaName == CompletionAreaName)
+            {
+                return true;
+            }
+
+            if (_locations == null || _locations.Length == 0)
+            {
+                return true;
+            }
+
+            List<int> screens;
+
+            if (!_areaScreenAppearedOrder.TryGetValue(areaName, out screens))
+            {
+                return false;
+            }
+
+            bool foundLocation = false;
+
+            for (int i = 0; i < _locations.Length; i++)
+            {
+                Location location = _locations[i];
+
+                if (FormatAreaName(location.name) != areaName)
+                {
+                    continue;
+                }
+
+                foundLocation = true;
+
+                for (int j = 0; j < screens.Count; j++)
+                {
+                    if (screens[j] >= location.unlock && screens[j] >= location.start && screens[j] <= location.end)
                     {
-                        matchedLocation = location;
-                        bestStart = location.start;
-                        found = true;
+                        return true;
                     }
                 }
             }
 
-            return found;
+            return !foundLocation;
         }
 
         private string FormatAreaName(string rawName)
@@ -534,6 +497,11 @@ namespace JKMetricsLite
             }
 
             name = name.Replace('_', ' ').Trim();
+
+            if (name == "Babe")
+            {
+                return "Babe Screen";
+            }
 
             return name.Length == 0 ? "Unknown" : name;
         }

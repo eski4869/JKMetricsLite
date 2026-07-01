@@ -222,10 +222,10 @@ async function updateAreaTable() {
 
     let areaIndex = 0;
     const visibleRows = rows.filter(row => row.is_excluded !== "1").map(row => {
-      const isCompletion = row.area_name === "Babe" && row.duration_ms === "";
+      const isCompletion = row.area_name === "Clear Time" && row.duration_ms === "";
 
       return {
-        areaText: isCompletion ? "Babe" : "Area " + (++areaIndex),
+        areaText: isCompletion ? "Clear Time" : "Area " + (++areaIndex),
         splitMs: row.entry_based_split_ms === "" ? Number.NaN : Number(row.entry_based_split_ms),
         durationMs: row.duration_ms === "" ? Number.NaN : Number(row.duration_ms) || 0,
         isCurrent: row.is_current === "1"
