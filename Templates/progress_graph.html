@@ -384,8 +384,8 @@ function drawAreaBands(ctx, yMin, yMax, paddingLeft, paddingTop, plotWidth, plot
     const yTop = progressToY(end, yMin, yMax, paddingTop, plotHeight);
     const yBottom = progressToY(start, yMin, yMax, paddingTop, plotHeight);
     ctx.fillStyle = index % 2 === 0
-      ? "rgba(255,255,255,0.035)"
-      : "rgba(255,255,255,0.015)";
+      ? "rgb(36,36,36)"
+      : "rgb(24,24,24)";
     ctx.fillRect(paddingLeft, yTop, plotWidth, yBottom - yTop);
   });
 }
@@ -402,6 +402,39 @@ function formatRelativeTime(milliseconds) {
   return "-" + minutes + "m";
 }
 
+function findFirstPeakPoint(points) {
+  let peakProgress = 0;
+  let peakPoint = null;
+
+  for (let i = 0; i < points.length; i++) {
+    const point = points[i];
+
+    if (point.progressIndex > peakProgress) {
+      peakProgress = point.progressIndex;
+      peakPoint = point;
+    }
+  }
+
+  return peakPoint;
+}
+
+function drawPeakPointer(ctx, point, minX, maxX, paddingLeft, paddingTop, plotWidth) {
+  if (!point) {
+    return;
+  }
+
+  const x = paddingLeft + ((point.elapsedMs - minX) / (maxX - minX)) * plotWidth;
+  const markerTip = paddingTop - 1;
+  const markerTop = paddingTop - 17;
+
+  ctx.fillStyle = "rgba(255,72,72,0.95)";
+  ctx.beginPath();
+  ctx.moveTo(x, markerTip);
+  ctx.lineTo(x - 8, markerTop);
+  ctx.lineTo(x + 8, markerTop);
+  ctx.closePath();
+  ctx.fill();
+}
 function drawChart(points) {
   const canvas = document.getElementById("chart");
   const ctx = canvas.getContext("2d");
@@ -508,6 +541,16 @@ function drawChart(points) {
   }
 
   ctx.stroke();
+
+  drawPeakPointer(
+    ctx,
+    findFirstPeakPoint(visible),
+    minX,
+    maxX,
+    paddingLeft,
+    paddingTop,
+    plotWidth
+  );
 
   const last = visible[visible.length - 1];
   const lastX = paddingLeft + ((last.elapsedMs - minX) / (maxX - minX)) * plotWidth;
