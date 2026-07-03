@@ -40,6 +40,7 @@ const maxPoints = 1500;
 let cachedAreaLayoutSignature = "";
 let cachedScreenEventsText = "";
 let cachedScreenToProgress = new Map();
+let cachedAreaRanges = [];
 let cachedMaxProgress = 0;
 let cachedPoints = [];
 let lastAttempt = "";
@@ -51,6 +52,7 @@ function resetGraphCache() {
   cachedAreaLayoutSignature = "";
   cachedScreenEventsText = "";
   cachedScreenToProgress = new Map();
+  cachedAreaRanges = [];
   cachedMaxProgress = 0;
   cachedPoints = [];
   lastPointKey = "";
@@ -261,10 +263,12 @@ async function loadScreenToProgressMap() {
   });
 
   const screenToProgress = new Map();
+  const areaRanges = [];
   let progressIndex = 1;
 
   includedAreas.forEach((areaName, areaIndex) => {
     const screens = screensByArea.get(areaName) || [];
+    const startProgressIndex = progressIndex;
 
     screens.forEach((screen, screenIndex) => {
       if (!screenToProgress.has(screen)) {
@@ -277,11 +281,20 @@ async function loadScreenToProgressMap() {
         progressIndex++;
       }
     });
+
+    if (progressIndex > startProgressIndex) {
+      areaRanges.push({
+        areaIndex: areaIndex + 1,
+        start: startProgressIndex,
+        end: progressIndex - 1
+      });
+    }
   });
 
   cachedAreaLayoutSignature = areaLayoutSignature;
   cachedScreenEventsText = screenEventsText;
   cachedScreenToProgress = screenToProgress;
+  cachedAreaRanges = areaRanges;
   cachedMaxProgress = Math.max(0, progressIndex - 1);
 
   return cachedScreenToProgress;
@@ -326,6 +339,7 @@ function appendStatePoint(state) {
       screenInArea: state.currentScreenOrder
     };
     cachedScreenToProgress.set(state.screen, progress);
+    extendAreaRange(progress.areaIndex, progress.progressIndex);
   }
 
   cachedPoints.push(buildGraphPoint(state.elapsedMs, state.screen, progress));
@@ -336,6 +350,44 @@ function appendStatePoint(state) {
 
   lastPointKey = key;
   return result;
+}
+
+function extendAreaRange(areaIndex, progressIndex) {
+  let range = cachedAreaRanges.find(item => item.areaIndex === areaIndex);
+
+  if (!range) {
+    cachedAreaRanges.push({
+      areaIndex,
+      start: progressIndex,
+      end: progressIndex
+    });
+    return;
+  }
+
+  range.start = Math.min(range.start, progressIndex);
+  range.end = Math.max(range.end, progressIndex);
+}
+
+function progressToY(progress, yMin, yMax, paddingTop, plotHeight) {
+  return paddingTop + plotHeight - ((progress - yMin) / (yMax - yMin)) * plotHeight;
+}
+
+function drawAreaBands(ctx, yMin, yMax, paddingLeft, paddingTop, plotWidth, plotHeight) {
+  cachedAreaRanges.forEach((range, index) => {
+    const start = Math.max(yMin, range.start - 0.5);
+    const end = Math.min(yMax, range.end + 0.5);
+
+    if (end <= start) {
+      return;
+    }
+
+    const yTop = progressToY(end, yMin, yMax, paddingTop, plotHeight);
+    const yBottom = progressToY(start, yMin, yMax, paddingTop, plotHeight);
+    ctx.fillStyle = index % 2 === 0
+      ? "rgba(255,255,255,0.035)"
+      : "rgba(255,255,255,0.015)";
+    ctx.fillRect(paddingLeft, yTop, plotWidth, yBottom - yTop);
+  });
 }
 
 function formatRelativeTime(milliseconds) {
@@ -391,6 +443,12 @@ function drawChart(points) {
     return;
   }
 
+  drawAreaBands(ctx, yMin, yMax, paddingLeft, paddingTop, plotWidth, plotHeight);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(paddingLeft, paddingTop, plotWidth, plotHeight);
+
   const yTicks = [];
   [0, 0.25, 0.50, 0.75, 1].forEach(ratio => {
     const tick = Math.round(yMin + (yMax - yMin) * ratio);
@@ -401,7 +459,7 @@ function drawChart(points) {
   });
 
   for (const tick of yTicks) {
-    const y = paddingTop + plotHeight - ((tick - yMin) / (yMax - yMin)) * plotHeight;
+    const y = progressToY(tick, yMin, yMax, paddingTop, plotHeight);
 
     ctx.strokeStyle = "rgba(255,255,255,0.18)";
     ctx.beginPath();
@@ -440,7 +498,7 @@ function drawChart(points) {
     const p = visible[i];
 
     const x = paddingLeft + ((p.elapsedMs - minX) / (maxX - minX)) * plotWidth;
-    const y = paddingTop + plotHeight - ((p.progressIndex - yMin) / (yMax - yMin)) * plotHeight;
+    const y = progressToY(p.progressIndex, yMin, yMax, paddingTop, plotHeight);
 
     if (i === 0) {
       ctx.moveTo(x, y);
@@ -453,7 +511,7 @@ function drawChart(points) {
 
   const last = visible[visible.length - 1];
   const lastX = paddingLeft + ((last.elapsedMs - minX) / (maxX - minX)) * plotWidth;
-  const lastY = paddingTop + plotHeight - ((last.progressIndex - yMin) / (yMax - yMin)) * plotHeight;
+  const lastY = progressToY(last.progressIndex, yMin, yMax, paddingTop, plotHeight);
 
   ctx.fillStyle = "white";
   ctx.beginPath();
