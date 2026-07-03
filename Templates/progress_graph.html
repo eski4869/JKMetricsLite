@@ -33,12 +33,12 @@
 <script>
 const screenMetricsFilePath = "../raw_data/attempts/current/screen_metrics.tsv";
 const areaFilePath = "../raw_data/attempts/current/area_progress.tsv";
-const screenOrderFilePath = "../raw_data/attempts/current/screen_order.tsv";
+const screenEventsFilePath = "../raw_data/attempts/current/screen_events.tsv";
 const stateFilePath = "../raw_data/attempts/current/current_state.tsv";
 
 const maxPoints = 1500;
 let cachedAreaLayoutSignature = "";
-let cachedScreenOrderText = "";
+let cachedScreenEventsText = "";
 let cachedScreenToProgress = new Map();
 let cachedMaxProgress = 0;
 let cachedPoints = [];
@@ -49,7 +49,7 @@ let hasFullRebuild = false;
 
 function resetGraphCache() {
   cachedAreaLayoutSignature = "";
-  cachedScreenOrderText = "";
+  cachedScreenEventsText = "";
   cachedScreenToProgress = new Map();
   cachedMaxProgress = 0;
   cachedPoints = [];
@@ -207,19 +207,19 @@ async function loadCurrentState() {
 
 async function loadScreenToProgressMap() {
   const areaText = await fetchText(areaFilePath);
-  const screenOrderText = await fetchText(screenOrderFilePath);
+  const screenEventsText = await fetchText(screenEventsFilePath);
 
   const areaRows = parseTsv(areaText);
   const areaLayoutSignature = buildAreaLayoutSignature(areaRows);
 
   if (
     areaLayoutSignature === cachedAreaLayoutSignature &&
-    screenOrderText === cachedScreenOrderText
+    screenEventsText === cachedScreenEventsText
   ) {
     return cachedScreenToProgress;
   }
 
-  const screenOrderRows = parseTsv(screenOrderText);
+  const screenEventRows = parseTsv(screenEventsText);
   const includedAreas = [];
   const includedAreaSet = new Set();
 
@@ -238,11 +238,14 @@ async function loadScreenToProgressMap() {
 
   const screensByArea = new Map();
 
-  screenOrderRows.forEach(row => {
+  screenEventRows.forEach(row => {
     const areaName = row.area_name || "";
+    const eventName = row.event || "";
     const screen = Number(row.screen);
 
-    if (!includedAreaSet.has(areaName) || !Number.isFinite(screen)) {
+    if (eventName !== "landing" ||
+        !includedAreaSet.has(areaName) ||
+        !Number.isFinite(screen)) {
       return;
     }
 
@@ -277,7 +280,7 @@ async function loadScreenToProgressMap() {
   });
 
   cachedAreaLayoutSignature = areaLayoutSignature;
-  cachedScreenOrderText = screenOrderText;
+  cachedScreenEventsText = screenEventsText;
   cachedScreenToProgress = screenToProgress;
   cachedMaxProgress = Math.max(0, progressIndex - 1);
 

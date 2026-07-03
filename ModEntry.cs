@@ -529,14 +529,16 @@ namespace JKMetricsLite
         };
         private PlayerEntity _player;
 
-        // Area-internal screen order is also based on first-reached order.
+        // Screen entry events preserve first-seen data; landed order drives graph/PB progress.
+        private readonly Dictionary<string, List<int>> _areaScreenEnteredOrder =
+            new Dictionary<string, List<int>>();
         private readonly Dictionary<string, List<int>> _areaScreenAppearedOrder =
             new Dictionary<string, List<int>>();
 
         private string _outputDir;
         private string _areaProgressPath;
         private string _screenMetricsPath;
-        private string _screenOrderPath;
+        private string _screenEventsPath;
         private string _statePath;
         private string _attemptsDir;
         private string _currentAttemptDir;
@@ -570,7 +572,7 @@ namespace JKMetricsLite
             public string CurrentAttemptDir;
             public string AreaProgressPath;
             public string ScreenMetricsPath;
-            public string ScreenOrderPath;
+            public string ScreenEventsPath;
             public string StatePath;
             public string TotalStatsPath;
             public string ClearTimeMetricsPath;
@@ -608,7 +610,7 @@ namespace JKMetricsLite
                 CurrentAttemptDir = currentAttemptDir,
                 AreaProgressPath = Path.Combine(currentAttemptDir, "area_progress.tsv"),
                 ScreenMetricsPath = Path.Combine(currentAttemptDir, "screen_metrics.tsv"),
-                ScreenOrderPath = Path.Combine(currentAttemptDir, "screen_order.tsv"),
+                ScreenEventsPath = Path.Combine(currentAttemptDir, "screen_events.tsv"),
                 StatePath = Path.Combine(currentAttemptDir, "current_state.tsv"),
                 TotalStatsPath = Path.Combine(rawDataDir, "total_metrics.tsv"),
                 ClearTimeMetricsPath = Path.Combine(rawDataDir, "clear_times.tsv"),
@@ -699,7 +701,7 @@ namespace JKMetricsLite
             _currentAttemptDir = preparation.CurrentAttemptDir;
             _areaProgressPath = preparation.AreaProgressPath;
             _screenMetricsPath = preparation.ScreenMetricsPath;
-            _screenOrderPath = preparation.ScreenOrderPath;
+            _screenEventsPath = preparation.ScreenEventsPath;
             _statePath = preparation.StatePath;
             _attemptBackupGenerations = preparation.AttemptBackupGenerations;
             _screenMetricsHeaderChecked = false;
@@ -935,6 +937,8 @@ namespace JKMetricsLite
                 // Unknown is intentionally excluded from area statistics and PB.
                 if (areaName != "Unknown")
                 {
+                    bool playerOnGround = IsPlayerOnGround();
+
                     if (!_areaFrames.ContainsKey(areaName))
                     {
                         _areaFrames[areaName] = 0;
@@ -946,7 +950,7 @@ namespace JKMetricsLite
                     }
 
                     if (!_areaFirstLandedMilliseconds.ContainsKey(areaName) &&
-                        IsPlayerOnGround())
+                        playerOnGround)
                     {
                         RecordAreaFirstLanding(areaName);
                     }
@@ -956,7 +960,9 @@ namespace JKMetricsLite
                         _areaAppearedOrder.Add(areaName);
                     }
 
-                    if (RegisterAreaScreenIfNeeded(areaName, screen))
+                    RegisterScreenEntryIfNeeded(areaName, screen);
+
+                    if (playerOnGround && RegisterScreenLandingIfNeeded(areaName, screen))
                     {
                         UpdatePbIfNeeded(screen, areaName);
                     }
@@ -990,9 +996,3 @@ namespace JKMetricsLite
         }
     }
 }
-
-
-
-
-
-

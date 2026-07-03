@@ -13,6 +13,7 @@ namespace JKMetricsLite
             _areaFirstReachedMilliseconds.Clear();
             _areaFirstLandedMilliseconds.Clear();
             _areaAppearedOrder.Clear();
+            _areaScreenEnteredOrder.Clear();
             _areaScreenAppearedOrder.Clear();
             _excludedAreas.Clear();
 
@@ -75,7 +76,7 @@ namespace JKMetricsLite
         private bool LoadRunDataIfSameAttempt(int? currentAttempt)
         {
             if (!File.Exists(_areaProgressPath) ||
-                !File.Exists(_screenOrderPath) ||
+                !File.Exists(_screenEventsPath) ||
                 !File.Exists(GetStatePathForRead()))
             {
                 return false;
@@ -94,7 +95,7 @@ namespace JKMetricsLite
             {
                 ResetStats();
                 LoadAreaProgress();
-                LoadScreenOrder();
+                LoadScreenEvents();
                 LoadScreenMetrics();
                 LoadState();
 
@@ -187,14 +188,15 @@ namespace JKMetricsLite
             }
         }
 
-        private void LoadScreenOrder()
+        private void LoadScreenEvents()
         {
-            List<Dictionary<string, string>> rows = ReadTsvRows(_screenOrderPath);
+            List<Dictionary<string, string>> rows = ReadTsvRows(_screenEventsPath);
 
             for (int i = 0; i < rows.Count; i++)
             {
                 Dictionary<string, string> row = rows[i];
                 string area = FormatAreaName(GetTsvValue(row, "area_name"));
+                string eventName = GetTsvValue(row, "event");
                 int screen;
 
                 if (!_areaFrames.ContainsKey(area) ||
@@ -205,15 +207,31 @@ namespace JKMetricsLite
                     continue;
                 }
 
-                if (!_areaScreenAppearedOrder.ContainsKey(area))
+                if (eventName == "entry")
                 {
-                    _areaScreenAppearedOrder[area] = new List<int>();
+                    AddScreenToAreaOrder(_areaScreenEnteredOrder, area, screen);
                 }
+                else if (eventName == "landing")
+                {
+                    AddScreenToAreaOrder(_areaScreenAppearedOrder, area, screen);
+                }
+            }
+        }
 
-                if (!_areaScreenAppearedOrder[area].Contains(screen))
-                {
-                    _areaScreenAppearedOrder[area].Add(screen);
-                }
+        private static void AddScreenToAreaOrder(
+            Dictionary<string, List<int>> target,
+            string area,
+            int screen
+        )
+        {
+            if (!target.ContainsKey(area))
+            {
+                target[area] = new List<int>();
+            }
+
+            if (!target[area].Contains(screen))
+            {
+                target[area].Add(screen);
             }
         }
 

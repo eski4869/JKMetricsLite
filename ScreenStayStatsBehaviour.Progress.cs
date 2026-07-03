@@ -186,7 +186,29 @@ namespace JKMetricsLite
             }
         }
 
-        private bool RegisterAreaScreenIfNeeded(string areaName, int screen)
+        private bool RegisterScreenEntryIfNeeded(string areaName, int screen)
+        {
+            if (areaName == "Unknown")
+            {
+                return false;
+            }
+
+            if (!_areaScreenEnteredOrder.ContainsKey(areaName))
+            {
+                _areaScreenEnteredOrder[areaName] = new List<int>();
+            }
+
+            if (_areaScreenEnteredOrder[areaName].Contains(screen))
+            {
+                return false;
+            }
+
+            _areaScreenEnteredOrder[areaName].Add(screen);
+            AppendScreenEventTsv(areaName, screen, "entry");
+            return true;
+        }
+
+        private bool RegisterScreenLandingIfNeeded(string areaName, int screen)
         {
             if (areaName == "Unknown")
             {
@@ -198,19 +220,19 @@ namespace JKMetricsLite
                 _areaScreenAppearedOrder[areaName] = new List<int>();
             }
 
-            if (!_areaScreenAppearedOrder[areaName].Contains(screen))
+            if (_areaScreenAppearedOrder[areaName].Contains(screen))
             {
-                if (DoesNewScreenChangeExistingGraphOrder(areaName))
-                {
-                    _screenOrderRevision++;
-                }
-
-                _areaScreenAppearedOrder[areaName].Add(screen);
-                AppendScreenOrderTsv(areaName, screen);
-                return true;
+                return false;
             }
 
-            return false;
+            if (DoesNewScreenChangeExistingGraphOrder(areaName))
+            {
+                _screenOrderRevision++;
+            }
+
+            _areaScreenAppearedOrder[areaName].Add(screen);
+            AppendScreenEventTsv(areaName, screen, "landing");
+            return true;
         }
 
         private bool DoesNewScreenChangeExistingGraphOrder(string areaName)

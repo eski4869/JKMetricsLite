@@ -45,30 +45,30 @@ Generated files are organized by purpose:
 
 ```text
 JKMetricsLite/
-├─ raw_data/
-│  ├─ attempts/
-│  │  ├─ current/
-│  │  │  ├─ area_progress.tsv
-│  │  │  ├─ screen_order.tsv
-│  │  │  ├─ screen_metrics.tsv
-│  │  │  └─ current_state.tsv
-│  │  └─ 777/
-│  │     ├─ area_progress.tsv
-│  │     ├─ screen_order.tsv
-│  │     ├─ screen_metrics.tsv
-│  │     └─ current_state.tsv
-│  ├─ total_metrics.tsv
-│  └─ clear_times.tsv
-├─ obs/
-│  ├─ area_name_splits.html
-│  ├─ area_number_splits.html
-│  ├─ area_name_splits_speedrun.html
-│  ├─ area_number_splits_speedrun.html
-│  ├─ progress_graph.html
-│  └─ clear_time_metrics.html
-├─ local/
-│  └─ recap.html
-└─ error.log
+├── raw_data/
+│   ├── attempts/
+│   │   ├── current/
+│   │   │   ├── area_progress.tsv
+│   │   │   ├── screen_events.tsv
+│   │   │   ├── screen_metrics.tsv
+│   │   │   └── current_state.tsv
+│   │   └── 777/
+│   │       ├── area_progress.tsv
+│   │       ├── screen_events.tsv
+│   │       ├── screen_metrics.tsv
+│   │       └── current_state.tsv
+│   ├── total_metrics.tsv
+│   └── clear_times.tsv
+├── obs/
+│   ├── area_name_splits.html
+│   ├── area_number_splits.html
+│   ├── area_name_splits_speedrun.html
+│   ├── area_number_splits_speedrun.html
+│   ├── progress_graph.html
+│   └── clear_time_metrics.html
+├── local/
+│   └── recap.html
+└── error.log
 ```
 
 - `raw_data` contains simple TSV data for overlays or custom analysis.
@@ -84,7 +84,7 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 | Type | File | Key | Values | Update timing |
 | --- | --- | --- | --- | --- |
 | Run Progress | `raw_data/attempts/current/area_progress.tsv` | Area | Entry split, landing split, duration, current/excluded/unlocked flags | Rewritten about every 60 frames. |
-| Screen Order | `raw_data/attempts/current/screen_order.tsv` | Screen | First-reached screen order log | Appended when a new screen is discovered. |
+| Screen Events | `raw_data/attempts/current/screen_events.tsv` | Screen event | First entry and first landing events | Appended when the player first enters or first lands on a new screen. |
 | Screen Metrics | `raw_data/attempts/current/screen_metrics.tsv` | Elapsed time | Screen, jumps, and falls snapshot samples | Appended about every 60 frames. |
 | Current State | `raw_data/attempts/current/current_state.tsv` | Current attempt | Latest screen, Now/PB progress, and graph revision | Rewritten about every 60 frames. |
 
@@ -105,13 +105,14 @@ Run metrics are restored from the attempt TSV files when continuing the same att
 | `excluded` | `0` or `1` | `1` when this area is excluded from bundled metrics views. |
 | `unlocked` | `0` or `1` | `1` when the area name can be shown without spoiler masking. |
 
-`raw_data/attempts/current/screen_order.tsv`
+`raw_data/attempts/current/screen_events.tsv`
 
 | Column | Format | Meaning |
 | --- | --- | --- |
-| `screen` | Integer | First-reached physical screen number. |
+| `screen` | Integer | Physical screen number. |
 | `area_name` | Text | Area name detected for that screen. |
-| `first_reached_ms` | Milliseconds | Game time when the screen was first reached. |
+| `event` | `entry` or `landing` | `entry` when the screen is first entered, `landing` when it is first landed on. |
+| `elapsed_ms` | Milliseconds | Game time when the event happened. |
 
 `raw_data/attempts/current/screen_metrics.tsv`
 
@@ -279,4 +280,3 @@ Area, screen, and PB metrics are reset automatically when you start a new game. 
 When a new game starts, the previous `raw_data/attempts/current/` files are moved to `raw_data/attempts/{attempt}/` before the current attempt data is reset. By default, only the latest previous attempt is kept.
 
 `total_metrics.tsv` is not reset with run metrics. It keeps accumulating long-term stats.
-

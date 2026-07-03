@@ -53,7 +53,7 @@ Run metrics are for the current attempt. They are useful for blind custom map pl
 
 [list]
 [*][b]raw_data/attempts/current/area_progress.tsv[/b] - Current area progress: split time, first landed time, duration, and display-state data.
-[*][b]raw_data/attempts/current/screen_order.tsv[/b] - Append log of first-reached screens.
+[*][b]raw_data/attempts/current/screen_events.tsv[/b] - Append log of first screen entry and landing events.
 [*][b]raw_data/attempts/current/screen_metrics.tsv[/b] - Screen, jumps, and falls snapshots sampled about every 60 frames for the real-time progress graph or attempt recap.
 [*][b]raw_data/attempts/current/current_state.tsv[/b] - Latest screen, Now/PB progress, and graph revision.
 [/list]
@@ -66,8 +66,8 @@ Run metrics are restored from the attempt TSV files when continuing the same att
 [code]area_progress.tsv
 area_name	entry_ms	landing_ms	duration_ms	current	excluded	unlocked
 
-screen_order.tsv
-screen	area_name	first_reached_ms
+screen_events.tsv
+screen	area_name	event	elapsed_ms
 
 screen_metrics.tsv
 elapsed_ms	screen	jumps	falls

@@ -19,12 +19,12 @@ namespace JKMetricsLite
             foreach (string area in GetRawAreaFramesInAppearedOrder())
             {
                 int frames = _areaFrames[area];
-                string firstReachedMilliseconds = "";
+                string entryMilliseconds = "";
                 string firstLandedMilliseconds = "";
 
                 if (_areaFirstReachedMilliseconds.ContainsKey(area))
                 {
-                    firstReachedMilliseconds =
+                    entryMilliseconds =
                         _areaFirstReachedMilliseconds[area].ToString();
                 }
 
@@ -36,7 +36,7 @@ namespace JKMetricsLite
 
                 sb.AppendLine(
                     EscapeTsv(area) + "\t" +
-                    firstReachedMilliseconds + "\t" +
+                    entryMilliseconds + "\t" +
                     firstLandedMilliseconds + "\t" +
                     FramesToMilliseconds(frames) + "\t" +
                     (area == _lastArea ? "1" : "0") + "\t" +
@@ -153,87 +153,45 @@ namespace JKMetricsLite
             }
         }
 
-        private void AppendScreenOrderTsv(string areaName, int screen)
+        private void AppendScreenEventTsv(string areaName, int screen, string eventName)
         {
             try
             {
                 var prepareStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                EnsureScreenOrderTsvHeader();
-                bool needsHeader = !File.Exists(_screenOrderPath) ||
-                    new FileInfo(_screenOrderPath).Length == 0;
+                bool needsHeader = !File.Exists(_screenEventsPath) ||
+                    new FileInfo(_screenEventsPath).Length == 0;
                 prepareStopwatch.Stop();
-                AddPerformanceTiming("screen_order_prepare", prepareStopwatch.Elapsed.TotalMilliseconds);
+                AddPerformanceTiming("screen_events_prepare", prepareStopwatch.Elapsed.TotalMilliseconds);
 
                 var sb = new StringBuilder();
 
                 if (needsHeader)
                 {
-                    sb.AppendLine("screen\tarea_name\tfirst_reached_ms");
+                    sb.AppendLine("screen\tarea_name\tevent\telapsed_ms");
                 }
 
                 sb.AppendLine(
                     screen + "\t" +
                     EscapeTsv(areaName) + "\t" +
-                    FramesToMilliseconds(_totalFrames)
+                    eventName + "\t" +
+                    GetScreenEventMilliseconds()
                 );
 
                 string output = sb.ToString();
                 var ioStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                File.AppendAllText(_screenOrderPath, output, Encoding.UTF8);
+                File.AppendAllText(_screenEventsPath, output, Encoding.UTF8);
                 ioStopwatch.Stop();
-                AddPerformanceTiming("screen_order_io", ioStopwatch.Elapsed.TotalMilliseconds);
+                AddPerformanceTiming("screen_events_io", ioStopwatch.Elapsed.TotalMilliseconds);
             }
             catch (Exception ex)
             {
-                LogError("Append screen order TSV", ex);
+                LogError("Append screen event TSV", ex);
             }
         }
 
-        private void EnsureScreenOrderTsvHeader()
+        private long GetScreenEventMilliseconds()
         {
-            if (string.IsNullOrEmpty(_screenOrderPath) ||
-                !File.Exists(_screenOrderPath) ||
-                new FileInfo(_screenOrderPath).Length == 0)
-            {
-                return;
-            }
-
-            string[] lines = File.ReadAllLines(_screenOrderPath, Encoding.UTF8);
-
-            if (lines.Length == 0 ||
-                lines[0] == "screen\tarea_name\tfirst_reached_ms")
-            {
-                return;
-            }
-
-            var rows = ReadTsvRows(_screenOrderPath);
-            var sb = new StringBuilder();
-            sb.AppendLine("screen\tarea_name\tfirst_reached_ms");
-
-            for (int i = 0; i < rows.Count; i++)
-            {
-                string areaName = GetTsvValue(rows[i], "area_name");
-                string screen = GetTsvValue(rows[i], "screen");
-                string firstReachedMilliseconds = GetTsvValue(rows[i], "first_reached_ms");
-
-                if (string.IsNullOrEmpty(firstReachedMilliseconds))
-                {
-                    firstReachedMilliseconds = GetTsvValue(rows[i], "elapsed_ms");
-                }
-
-                if (string.IsNullOrEmpty(areaName) || string.IsNullOrEmpty(screen))
-                {
-                    continue;
-                }
-
-                sb.AppendLine(
-                    screen + "\t" +
-                    EscapeTsv(areaName) + "\t" +
-                    firstReachedMilliseconds
-                );
-            }
-
-            File.WriteAllText(_screenOrderPath, sb.ToString(), Encoding.UTF8);
+            return _totalFrames == 0 ? 0 : GetCurrentRunMilliseconds();
         }
 
         private void GetCurrentProgress(out int areaOrder, out int screenOrder)
