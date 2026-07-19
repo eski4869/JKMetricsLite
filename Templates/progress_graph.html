@@ -494,12 +494,6 @@ function drawChart(points) {
   for (const tick of yTicks) {
     const y = progressToY(tick, yMin, yMax, paddingTop, plotHeight);
 
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    ctx.beginPath();
-    ctx.moveTo(paddingLeft, y);
-    ctx.lineTo(paddingLeft + plotWidth, y);
-    ctx.stroke();
-
     ctx.fillStyle = "white";
     ctx.fillText(String(tick).padStart(3, " "), 8, y + 5);
   }

@@ -23,6 +23,8 @@ namespace JKMetricsLite
             _lastArea = "Unknown";
             _screenOrderRevision = 0;
             _screenMetricsHeaderChecked = false;
+            _babeScreenEntryMilliseconds = null;
+            _babeScreenLandingMilliseconds = null;
             _babeClearTimeMilliseconds = null;
 
             _pbArea = "";
@@ -119,6 +121,31 @@ namespace JKMetricsLite
             {
                 Dictionary<string, string> row = rows[i];
                 string area = FormatAreaName(GetTsvValue(row, "area_name"));
+
+                if (area == BabeScreenAreaName)
+                {
+                    long splitMilliseconds;
+
+                    if (long.TryParse(
+                        GetTsvValue(row, "entry_ms"),
+                        out splitMilliseconds
+                    ))
+                    {
+                        _babeScreenEntryMilliseconds =
+                            Math.Max(0, splitMilliseconds);
+                    }
+
+                    if (long.TryParse(
+                        GetTsvValue(row, "landing_ms"),
+                        out splitMilliseconds
+                    ))
+                    {
+                        _babeScreenLandingMilliseconds =
+                            Math.Max(0, splitMilliseconds);
+                    }
+
+                    continue;
+                }
 
                 if (area == CompletionAreaName)
                 {

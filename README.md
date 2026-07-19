@@ -97,7 +97,7 @@ Run metrics are restored from the attempt TSV files when continuing the same att
 
 | Column | Format | Meaning |
 | --- | --- | --- |
-| `area_name` | Text | Area name. `Unknown`, `Babe Screen`, and `Clear Time` can also appear. |
+| `area_name` | Text | Area name. `Unknown` can also appear. `Babe Screen` and `Clear Time` are split-only rows and are not areas. |
 | `entry_ms` | Milliseconds | Game time when the area was entered. Used by speedrun views. |
 | `landing_ms` | Milliseconds or empty | Game time when the player first landed in the area. Used by non-speedrun views. |
 | `duration_ms` | Milliseconds or empty | Time spent in the area. Empty for `Clear Time`. |
@@ -270,7 +270,7 @@ If you enter an optional or hidden area that you do not want in the displayed ru
 
 PB means the furthest reached position based on the first-reached area order and the first-reached screen order inside that area.
 
-`entry_ms` is captured when the area is entered and is used by the speedrun area views. `landing_ms` is captured when the player first lands in that area and is used by the non-speedrun area views. Duration is counted separately from the frames processed by JK Metrics Lite. The final `Babe` row uses the clear time for both entry and landing columns and leaves duration empty.
+`entry_ms` is captured when the area is entered and is used by the speedrun area views. `landing_ms` is captured when the player first lands in that area and is used by the non-speedrun area views. Duration is counted separately from the frames processed by JK Metrics Lite. `Babe Screen` records only its entry and landing splits, while `Clear Time` records the final clear time; neither row participates in area order, PB, or duration metrics.
 
 
 ## Reset Metrics

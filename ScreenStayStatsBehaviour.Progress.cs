@@ -149,6 +149,24 @@ namespace JKMetricsLite
             }
         }
 
+        private void RecordBabeScreenSplitIfNeeded(int screen, bool playerLanded)
+        {
+            if (!_babeScreens.Contains(screen))
+            {
+                return;
+            }
+
+            if (!_babeScreenEntryMilliseconds.HasValue)
+            {
+                _babeScreenEntryMilliseconds = GetScreenEventMilliseconds();
+            }
+
+            if (playerLanded && !_babeScreenLandingMilliseconds.HasValue)
+            {
+                _babeScreenLandingMilliseconds = GetScreenEventMilliseconds();
+            }
+        }
+
         private long GetCurrentRunMilliseconds()
         {
             TimeSpan? currentRunTime = PlayerStatsReader.TryGetCurrentRunTime();
@@ -161,14 +179,45 @@ namespace JKMetricsLite
             return FramesToMilliseconds(_totalFrames);
         }
 
-        private bool IsPlayerOnGround()
+        private bool IsPlayerLandedForMetrics()
         {
             if (_playerBody == null)
             {
                 _playerBody = TryGetPlayerBody();
             }
 
-            return _playerBody != null && _playerBody.IsOnGround;
+            if (_playerBody == null)
+            {
+                return false;
+            }
+
+            if (_playerBody.IsOnGround)
+            {
+                return true;
+            }
+
+            return !_playerBody.IsKnocked && IsPlayerOnSandLikeBlock();
+        }
+
+        private bool IsPlayerOnSandLikeBlock()
+        {
+            try
+            {
+                foreach (Type blockType in _playerBody.OnBlocks())
+                {
+                    if (blockType != null &&
+                        blockType.Name.IndexOf("Sand", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Check sand-like block", ex);
+            }
+
+            return false;
         }
 
         private BodyComp TryGetPlayerBody()
@@ -387,11 +436,6 @@ namespace JKMetricsLite
 
         private string GetAreaNameForScreen(int screen)
         {
-            if (_babeScreens.Contains(screen))
-            {
-                return BabeScreenAreaName;
-            }
-
             Location location;
 
             if (TryGetLocationForScreen(screen, out location))
@@ -525,11 +569,6 @@ namespace JKMetricsLite
             }
 
             name = name.Replace('_', ' ').Trim();
-
-            if (name == "Babe")
-            {
-                return "Babe Screen";
-            }
 
             return name.Length == 0 ? "Unknown" : name;
         }

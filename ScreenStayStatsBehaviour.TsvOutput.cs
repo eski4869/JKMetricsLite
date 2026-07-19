@@ -45,6 +45,18 @@ namespace JKMetricsLite
                 );
             }
 
+            if (_babeScreenEntryMilliseconds.HasValue)
+            {
+                sb.AppendLine(
+                    BabeScreenAreaName + "\t" +
+                    _babeScreenEntryMilliseconds.Value + "\t" +
+                    (_babeScreenLandingMilliseconds.HasValue
+                        ? _babeScreenLandingMilliseconds.Value.ToString()
+                        : "") +
+                    "\t\t0\t0\t1"
+                );
+            }
+
             if (_babeClearTimeMilliseconds.HasValue)
             {
                 string clearTimeMilliseconds = _babeClearTimeMilliseconds.Value.ToString();

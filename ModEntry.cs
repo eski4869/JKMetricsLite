@@ -520,6 +520,8 @@ namespace JKMetricsLite
         private readonly List<string> _areaAppearedOrder = new List<string>();
         private readonly HashSet<string> _excludedAreas = new HashSet<string>();
         private readonly HashSet<int> _babeScreens = new HashSet<int>();
+        private long? _babeScreenEntryMilliseconds = null;
+        private long? _babeScreenLandingMilliseconds = null;
         private long? _babeClearTimeMilliseconds = null;
         private readonly IEnding[] _officialEndings = new IEnding[]
         {
@@ -933,12 +935,19 @@ namespace JKMetricsLite
 
                 string areaName = GetAreaNameForScreen(screen);
                 _lastArea = areaName;
+                bool isBabeScreen = _babeScreens.Contains(screen);
+                bool playerLandedForMetrics =
+                    (areaName != "Unknown" || isBabeScreen) &&
+                    IsPlayerLandedForMetrics();
+
+                RecordBabeScreenSplitIfNeeded(
+                    screen,
+                    playerLandedForMetrics
+                );
 
                 // Unknown is intentionally excluded from area statistics and PB.
                 if (areaName != "Unknown")
                 {
-                    bool playerOnGround = IsPlayerOnGround();
-
                     if (!_areaFrames.ContainsKey(areaName))
                     {
                         _areaFrames[areaName] = 0;
@@ -950,7 +959,7 @@ namespace JKMetricsLite
                     }
 
                     if (!_areaFirstLandedMilliseconds.ContainsKey(areaName) &&
-                        playerOnGround)
+                        playerLandedForMetrics)
                     {
                         RecordAreaFirstLanding(areaName);
                     }
@@ -962,7 +971,7 @@ namespace JKMetricsLite
 
                     RegisterScreenEntryIfNeeded(areaName, screen);
 
-                    if (playerOnGround && RegisterScreenLandingIfNeeded(areaName, screen))
+                    if (playerLandedForMetrics && RegisterScreenLandingIfNeeded(areaName, screen))
                     {
                         UpdatePbIfNeeded(screen, areaName);
                     }
