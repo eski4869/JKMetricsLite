@@ -10,32 +10,72 @@ namespace JKMetricsLite
     {
         private void WriteAreaProgressTsv()
         {
+            var buildStopwatch = System.Diagnostics.Stopwatch.StartNew();
             var sb = new StringBuilder();
             sb.AppendLine(
-                "area_name\tsplit_ms\tduration_ms\tis_current\tis_excluded"
+                "area_name\tentry_ms\tlanding_ms\tduration_ms\tcurrent\texcluded\tunlocked"
             );
 
             foreach (string area in GetRawAreaFramesInAppearedOrder())
             {
                 int frames = _areaFrames[area];
-                string firstReachedMilliseconds = "";
+                string entryMilliseconds = "";
+                string firstLandedMilliseconds = "";
 
                 if (_areaFirstReachedMilliseconds.ContainsKey(area))
                 {
-                    firstReachedMilliseconds =
+                    entryMilliseconds =
                         _areaFirstReachedMilliseconds[area].ToString();
+                }
+
+                if (_areaFirstLandedMilliseconds.ContainsKey(area))
+                {
+                    firstLandedMilliseconds =
+                        _areaFirstLandedMilliseconds[area].ToString();
                 }
 
                 sb.AppendLine(
                     EscapeTsv(area) + "\t" +
-                    firstReachedMilliseconds + "\t" +
+                    entryMilliseconds + "\t" +
+                    firstLandedMilliseconds + "\t" +
                     FramesToMilliseconds(frames) + "\t" +
                     (area == _lastArea ? "1" : "0") + "\t" +
-                    (_excludedAreas.Contains(area) ? "1" : "0")
+                    (_excludedAreas.Contains(area) ? "1" : "0") + "\t" +
+                    (IsAreaUnlocked(area) ? "1" : "0")
                 );
             }
 
-            File.WriteAllText(_areaProgressPath, sb.ToString(), Encoding.UTF8);
+            if (_babeScreenEntryMilliseconds.HasValue)
+            {
+                sb.AppendLine(
+                    BabeScreenAreaName + "\t" +
+                    _babeScreenEntryMilliseconds.Value + "\t" +
+                    (_babeScreenLandingMilliseconds.HasValue
+                        ? _babeScreenLandingMilliseconds.Value.ToString()
+                        : "") +
+                    "\t\t0\t0\t1"
+                );
+            }
+
+            if (_babeClearTimeMilliseconds.HasValue)
+            {
+                string clearTimeMilliseconds = _babeClearTimeMilliseconds.Value.ToString();
+
+                sb.AppendLine(
+                    CompletionAreaName + "\t" +
+                    clearTimeMilliseconds + "\t" +
+                    clearTimeMilliseconds + "\t\t0\t0\t1"
+                );
+            }
+
+            string output = sb.ToString();
+            buildStopwatch.Stop();
+            AddPerformanceTiming("area_progress_build", buildStopwatch.Elapsed.TotalMilliseconds);
+
+            var ioStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            File.WriteAllText(_areaProgressPath, output, Encoding.UTF8);
+            ioStopwatch.Stop();
+            AddPerformanceTiming("area_progress_io", ioStopwatch.Elapsed.TotalMilliseconds);
         }
 
         private Dictionary<string, string> BuildAreaIndexMap()
@@ -85,6 +125,7 @@ namespace JKMetricsLite
         {
             try
             {
+                var buildStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 int currentAreaOrder;
                 int currentScreenOrder;
                 GetCurrentProgress(out currentAreaOrder, out currentScreenOrder);
@@ -109,7 +150,14 @@ namespace JKMetricsLite
                     Math.Max(0, _screenOrderRevision)
                 );
 
-                File.WriteAllText(_statePath, sb.ToString(), Encoding.UTF8);
+                string output = sb.ToString();
+                buildStopwatch.Stop();
+                AddPerformanceTiming("current_state_build", buildStopwatch.Elapsed.TotalMilliseconds);
+
+                var ioStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                File.WriteAllText(_statePath, output, Encoding.UTF8);
+                ioStopwatch.Stop();
+                AddPerformanceTiming("current_state_io", ioStopwatch.Elapsed.TotalMilliseconds);
             }
             catch (Exception ex)
             {
@@ -117,68 +165,45 @@ namespace JKMetricsLite
             }
         }
 
-        private void AppendScreenOrderTsv(string areaName, int screen)
+        private void AppendScreenEventTsv(string areaName, int screen, string eventName)
         {
             try
             {
-                EnsureScreenOrderTsvHeader();
+                var prepareStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                bool needsHeader = !File.Exists(_screenEventsPath) ||
+                    new FileInfo(_screenEventsPath).Length == 0;
+                prepareStopwatch.Stop();
+                AddPerformanceTiming("screen_events_prepare", prepareStopwatch.Elapsed.TotalMilliseconds);
 
                 var sb = new StringBuilder();
 
-                if (!File.Exists(_screenOrderPath) ||
-                    new FileInfo(_screenOrderPath).Length == 0)
+                if (needsHeader)
                 {
-                    sb.AppendLine("elapsed_ms\tscreen\tarea_name");
+                    sb.AppendLine("screen\tarea_name\tevent\telapsed_ms");
                 }
 
                 sb.AppendLine(
-                    FramesToMilliseconds(_totalFrames) + "\t" +
                     screen + "\t" +
-                    EscapeTsv(areaName)
+                    EscapeTsv(areaName) + "\t" +
+                    eventName + "\t" +
+                    GetScreenEventMilliseconds()
                 );
-                File.AppendAllText(_screenOrderPath, sb.ToString(), Encoding.UTF8);
+
+                string output = sb.ToString();
+                var ioStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                File.AppendAllText(_screenEventsPath, output, Encoding.UTF8);
+                ioStopwatch.Stop();
+                AddPerformanceTiming("screen_events_io", ioStopwatch.Elapsed.TotalMilliseconds);
             }
             catch (Exception ex)
             {
-                LogError("Append screen order TSV", ex);
+                LogError("Append screen event TSV", ex);
             }
         }
 
-        private void EnsureScreenOrderTsvHeader()
+        private long GetScreenEventMilliseconds()
         {
-            if (string.IsNullOrEmpty(_screenOrderPath) ||
-                !File.Exists(_screenOrderPath) ||
-                new FileInfo(_screenOrderPath).Length == 0)
-            {
-                return;
-            }
-
-            string[] lines = File.ReadAllLines(_screenOrderPath, Encoding.UTF8);
-
-            if (lines.Length == 0 ||
-                lines[0] == "elapsed_ms\tscreen\tarea_name")
-            {
-                return;
-            }
-
-            var rows = ReadTsvRows(_screenOrderPath);
-            var sb = new StringBuilder();
-            sb.AppendLine("elapsed_ms\tscreen\tarea_name");
-
-            for (int i = 0; i < rows.Count; i++)
-            {
-                string areaName = GetTsvValue(rows[i], "area_name");
-                string screen = GetTsvValue(rows[i], "screen");
-
-                if (string.IsNullOrEmpty(areaName) || string.IsNullOrEmpty(screen))
-                {
-                    continue;
-                }
-
-                sb.AppendLine("\t" + screen + "\t" + EscapeTsv(areaName));
-            }
-
-            File.WriteAllText(_screenOrderPath, sb.ToString(), Encoding.UTF8);
+            return _totalFrames == 0 ? 0 : GetCurrentRunMilliseconds();
         }
 
         private void GetCurrentProgress(out int areaOrder, out int screenOrder)
@@ -228,10 +253,17 @@ namespace JKMetricsLite
 
             try
             {
+                var prepareStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 EnsureScreenMetricsTsvHeader();
-
                 bool exists = File.Exists(_screenMetricsPath);
+                prepareStopwatch.Stop();
+                AddPerformanceTiming("screen_metrics_prepare", prepareStopwatch.Elapsed.TotalMilliseconds);
+
+                var statsStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 PlayerStats? stats = PlayerStatsReader.TryGetCurrentStats();
+                statsStopwatch.Stop();
+                AddPerformanceTiming("screen_metrics_stats", statsStopwatch.Elapsed.TotalMilliseconds);
+
                 string jumps = stats.HasValue ? stats.Value.jumps.ToString() : "";
                 string falls = stats.HasValue ? stats.Value.falls.ToString() : "";
 
@@ -249,7 +281,11 @@ namespace JKMetricsLite
                     falls
                 );
 
-                File.AppendAllText(_screenMetricsPath, sb.ToString(), Encoding.UTF8);
+                string output = sb.ToString();
+                var ioStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                File.AppendAllText(_screenMetricsPath, output, Encoding.UTF8);
+                ioStopwatch.Stop();
+                AddPerformanceTiming("screen_metrics_io", ioStopwatch.Elapsed.TotalMilliseconds);
             }
             catch (Exception ex)
             {
@@ -328,4 +364,3 @@ namespace JKMetricsLite
         }
     }
 }
-

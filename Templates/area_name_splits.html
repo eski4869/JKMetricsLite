@@ -57,10 +57,16 @@
       word-break: break-word;
     }
 
-    th.time,
+    th.time {
+      width: 13ch;
+      white-space: pre;
+      text-align: center;
+    }
+
     td.time {
       width: 13ch;
       white-space: pre;
+      text-align: right;
     }
 
     th.graph,
@@ -129,7 +135,8 @@ function escapeHtml(value) {
 }
 
 function getDurationPercent(durationMs, maxDurationMs) {
-  if (maxDurationMs <= 0 || durationMs <= 0) {
+  if (!Number.isFinite(maxDurationMs) || !Number.isFinite(durationMs) ||
+      maxDurationMs <= 0 || durationMs <= 0) {
     return 0;
   }
 
@@ -178,6 +185,12 @@ function formatTime(milliseconds) {
     String(seconds).padStart(2, " ") + "s";
 }
 
+function formatSplitTime(milliseconds) {
+  return Number.isFinite(milliseconds) && milliseconds >= 0
+    ? formatTime(milliseconds)
+    : "?";
+}
+
 async function updateProgress() {
   try {
     const res = await fetch(stateFilePath + "?t=" + Date.now());
@@ -213,23 +226,25 @@ async function updateAreaTable() {
       return;
     }
 
-    const rows = data.filter(row => row.is_excluded !== "1").map(row => {
+    const rows = data.filter(row => row.excluded !== "1" && row.landing_ms !== "").map(row => {
       return {
-        areaName: row.area_name || "",
-        splitMs: row.split_ms === "" ? Number.NaN : Number(row.split_ms),
-        durationMs: Number(row.duration_ms) || 0,
-        isCurrent: row.is_current === "1"
+        splitMs: Number(row.landing_ms),
+        areaName: row.unlocked === "0" ? "???" : row.area_name || "",
+        durationMs: row.duration_ms === "" ? Number.NaN : Number(row.duration_ms) || 0,
+        isCurrent: row.current === "1"
       };
     });
 
-    const maxDurationMs = rows.reduce((max, row) => Math.max(max, row.durationMs), 0);
+    const maxDurationMs = rows.reduce((max, row) => {
+      return Math.max(max, Number.isFinite(row.durationMs) ? row.durationMs : 0);
+    }, 0);
 
     const html = rows.map(row => {
       const durationPercent = getDurationPercent(row.durationMs, maxDurationMs);
 
       return "<tr" + (row.isCurrent ? " class='current'" : "") + ">" +
         "<td class='area'>" + escapeHtml(row.areaName) + "</td>" +
-        "<td class='time'>" + escapeHtml(formatTime(row.splitMs)) + "</td>" +
+        "<td class='time'>" + escapeHtml(formatSplitTime(row.splitMs)) + "</td>" +
         "<td class='graph'><div class='duration-track'>" +
           "<div class='duration-fill' style='width:" + durationPercent.toFixed(2) + "%'></div>" +
         "</div></td>" +

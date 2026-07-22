@@ -3,13 +3,29 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using EntityComponent;
 using JumpKing.MiscSystems.Achievements;
 using JumpKing.MiscSystems.LocationText;
+using JumpKing.Player;
 
 namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
+        private static readonly HashSet<string> ChargeableBlockNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "SandBlock",
+            "Quicksand",
+            "SideSand",
+            "UpSand",
+            "MagicSand",
+            "InfinityJump",
+            "WallJump",
+            "AirJump",
+            "AirDash",
+            "Flapping"
+        };
+
         internal static bool IsCurrentAreaExcludedFromMetrics()
         {
             if (_instance == null)
@@ -85,7 +101,172 @@ namespace JKMetricsLite
             _areaFirstReachedMilliseconds[areaName] = firstReachedMilliseconds;
         }
 
-        private bool RegisterAreaScreenIfNeeded(string areaName, int screen)
+        private void RecordAreaFirstLanding(string areaName)
+        {
+            long firstLandedMilliseconds = _totalFrames == 0
+                ? 0
+                : GetCurrentRunMilliseconds();
+
+            _areaFirstLandedMilliseconds[areaName] = firstLandedMilliseconds;
+        }
+
+        private void RecordClearTimeIfNeeded()
+        {
+            if (_babeClearTimeMilliseconds.HasValue ||
+                !IsOfficialWinConditionMet())
+            {
+                return;
+            }
+
+            _babeClearTimeMilliseconds =
+                GetCurrentRunMilliseconds() + FramesToMilliseconds(1);
+
+            WriteAreaProgressTsv();
+        }
+
+        private bool IsOfficialWinConditionMet()
+        {
+            if (_player == null)
+            {
+                _player = EntityManager.instance.Find<PlayerEntity>();
+            }
+
+            if (_player == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _officialEndings.Length; i++)
+            {
+                if (_officialEndings[i].CheckWin(_player))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void LoadBabeScreens()
+        {
+            _babeScreens.Clear();
+            AddBabeScreen(JumpKing.GameManager.MultiEnding.NormalEnding.NormalEnding.ENDING_SCREEN0 + 1);
+            AddBabeScreen(JumpKing.GameManager.MultiEnding.NewBabePlusEnding.NewBabePlusEnding.ENDING_SCREEN0 + 1);
+            AddBabeScreen(JumpKing.GameManager.MultiEnding.OwlEnding.OwlEnding.ENDING_SCREEN0 + 1);
+        }
+
+        private void AddBabeScreen(int screen)
+        {
+            if (screen >= MinScreen && screen <= MaxScreen)
+            {
+                _babeScreens.Add(screen);
+            }
+        }
+
+        private void RecordBabeScreenSplitIfNeeded(int screen, bool playerLanded)
+        {
+            if (!_babeScreens.Contains(screen))
+            {
+                return;
+            }
+
+            if (!_babeScreenEntryMilliseconds.HasValue)
+            {
+                _babeScreenEntryMilliseconds = GetScreenEventMilliseconds();
+            }
+
+            if (playerLanded && !_babeScreenLandingMilliseconds.HasValue)
+            {
+                _babeScreenLandingMilliseconds = GetScreenEventMilliseconds();
+            }
+        }
+
+        private long GetCurrentRunMilliseconds()
+        {
+            TimeSpan? currentRunTime = PlayerStatsReader.TryGetCurrentRunTime();
+
+            if (currentRunTime.HasValue && currentRunTime.Value.TotalMilliseconds >= 0)
+            {
+                return (long)Math.Round(currentRunTime.Value.TotalMilliseconds);
+            }
+
+            return FramesToMilliseconds(_totalFrames);
+        }
+
+        private bool IsPlayerLandedForMetrics()
+        {
+            if (_playerBody == null)
+            {
+                _playerBody = TryGetPlayerBody();
+            }
+
+            if (_playerBody == null)
+            {
+                return false;
+            }
+
+            return !_playerBody.IsKnocked &&
+                (_playerBody.IsOnGround || IsPlayerOnChargeableBlock());
+        }
+
+        private bool IsPlayerOnChargeableBlock()
+        {
+            try
+            {
+                foreach (Type blockType in _playerBody.OnBlocks())
+                {
+                    if (blockType != null && ChargeableBlockNames.Contains(blockType.Name))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Check chargeable block", ex);
+            }
+
+            return false;
+        }
+
+        private BodyComp TryGetPlayerBody()
+        {
+            try
+            {
+                PlayerEntity player = EntityManager.instance.Find<PlayerEntity>();
+
+                return player != null ? player.m_body : null;
+            }
+            catch (Exception ex)
+            {
+                LogError("Get player body", ex);
+                return null;
+            }
+        }
+
+        private bool RegisterScreenEntryIfNeeded(string areaName, int screen)
+        {
+            if (areaName == "Unknown")
+            {
+                return false;
+            }
+
+            if (!_areaScreenEnteredOrder.ContainsKey(areaName))
+            {
+                _areaScreenEnteredOrder[areaName] = new List<int>();
+            }
+
+            if (_areaScreenEnteredOrder[areaName].Contains(screen))
+            {
+                return false;
+            }
+
+            _areaScreenEnteredOrder[areaName].Add(screen);
+            AppendScreenEventTsv(areaName, screen, "entry");
+            return true;
+        }
+
+        private bool RegisterScreenLandingIfNeeded(string areaName, int screen)
         {
             if (areaName == "Unknown")
             {
@@ -97,19 +278,19 @@ namespace JKMetricsLite
                 _areaScreenAppearedOrder[areaName] = new List<int>();
             }
 
-            if (!_areaScreenAppearedOrder[areaName].Contains(screen))
+            if (_areaScreenAppearedOrder[areaName].Contains(screen))
             {
-                if (DoesNewScreenChangeExistingGraphOrder(areaName))
-                {
-                    _screenOrderRevision++;
-                }
-
-                _areaScreenAppearedOrder[areaName].Add(screen);
-                AppendScreenOrderTsv(areaName, screen);
-                return true;
+                return false;
             }
 
-            return false;
+            if (DoesNewScreenChangeExistingGraphOrder(areaName))
+            {
+                _screenOrderRevision++;
+            }
+
+            _areaScreenAppearedOrder[areaName].Add(screen);
+            AppendScreenEventTsv(areaName, screen, "landing");
+            return true;
         }
 
         private bool DoesNewScreenChangeExistingGraphOrder(string areaName)
@@ -283,25 +464,103 @@ namespace JKMetricsLite
                 return false;
             }
 
+            int matchCount = 0;
             bool found = false;
-            int bestStart = int.MinValue;
+            Location firstLocation = default(Location);
+            Location closestUnlockLocation = default(Location);
+            int closestUnlockDistance = int.MaxValue;
+            int closestUnlock = int.MinValue;
+            int closestUnlockStart = int.MinValue;
 
             for (int i = 0; i < _locations.Length; i++)
             {
                 Location location = _locations[i];
 
-                if (screen >= location.start && screen <= location.end)
+                if (screen < location.start || screen > location.end)
                 {
-                    if (location.start > bestStart)
+                    continue;
+                }
+
+                matchCount++;
+
+                if (!found)
+                {
+                    firstLocation = location;
+                    found = true;
+                }
+
+                int unlockDistance = Math.Abs(screen - location.unlock);
+
+                if (unlockDistance < closestUnlockDistance ||
+                    (unlockDistance == closestUnlockDistance && location.unlock > closestUnlock) ||
+                    (unlockDistance == closestUnlockDistance &&
+                        location.unlock == closestUnlock &&
+                        location.start > closestUnlockStart))
+                {
+                    closestUnlockLocation = location;
+                    closestUnlockDistance = unlockDistance;
+                    closestUnlock = location.unlock;
+                    closestUnlockStart = location.start;
+                }
+            }
+
+            if (!found)
+            {
+                return false;
+            }
+
+            matchedLocation = matchCount > 1
+                ? closestUnlockLocation
+                : firstLocation;
+
+            return true;
+        }
+
+        private bool IsAreaUnlocked(string areaName)
+        {
+            if (string.IsNullOrEmpty(areaName) ||
+                areaName == "Unknown" ||
+                areaName == BabeScreenAreaName ||
+                areaName == CompletionAreaName)
+            {
+                return true;
+            }
+
+            if (_locations == null || _locations.Length == 0)
+            {
+                return true;
+            }
+
+            List<int> screens;
+
+            if (!_areaScreenAppearedOrder.TryGetValue(areaName, out screens))
+            {
+                return false;
+            }
+
+            bool foundLocation = false;
+
+            for (int i = 0; i < _locations.Length; i++)
+            {
+                Location location = _locations[i];
+
+                if (FormatAreaName(location.name) != areaName)
+                {
+                    continue;
+                }
+
+                foundLocation = true;
+
+                for (int j = 0; j < screens.Count; j++)
+                {
+                    if (screens[j] >= location.unlock && screens[j] >= location.start && screens[j] <= location.end)
                     {
-                        matchedLocation = location;
-                        bestStart = location.start;
-                        found = true;
+                        return true;
                     }
                 }
             }
 
-            return found;
+            return !foundLocation;
         }
 
         private string FormatAreaName(string rawName)

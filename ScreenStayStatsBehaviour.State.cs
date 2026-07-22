@@ -11,7 +11,9 @@ namespace JKMetricsLite
         {
             _areaFrames.Clear();
             _areaFirstReachedMilliseconds.Clear();
+            _areaFirstLandedMilliseconds.Clear();
             _areaAppearedOrder.Clear();
+            _areaScreenEnteredOrder.Clear();
             _areaScreenAppearedOrder.Clear();
             _excludedAreas.Clear();
 
@@ -21,6 +23,9 @@ namespace JKMetricsLite
             _lastArea = "Unknown";
             _screenOrderRevision = 0;
             _screenMetricsHeaderChecked = false;
+            _babeScreenEntryMilliseconds = null;
+            _babeScreenLandingMilliseconds = null;
+            _babeClearTimeMilliseconds = null;
 
             _pbArea = "";
             _pbAreaIndex = -1;
@@ -73,7 +78,7 @@ namespace JKMetricsLite
         private bool LoadRunDataIfSameAttempt(int? currentAttempt)
         {
             if (!File.Exists(_areaProgressPath) ||
-                !File.Exists(_screenOrderPath) ||
+                !File.Exists(_screenEventsPath) ||
                 !File.Exists(GetStatePathForRead()))
             {
                 return false;
@@ -92,7 +97,7 @@ namespace JKMetricsLite
             {
                 ResetStats();
                 LoadAreaProgress();
-                LoadScreenOrder();
+                LoadScreenEvents();
                 LoadScreenMetrics();
                 LoadState();
 
@@ -117,6 +122,47 @@ namespace JKMetricsLite
                 Dictionary<string, string> row = rows[i];
                 string area = FormatAreaName(GetTsvValue(row, "area_name"));
 
+                if (area == BabeScreenAreaName)
+                {
+                    long splitMilliseconds;
+
+                    if (long.TryParse(
+                        GetTsvValue(row, "entry_ms"),
+                        out splitMilliseconds
+                    ))
+                    {
+                        _babeScreenEntryMilliseconds =
+                            Math.Max(0, splitMilliseconds);
+                    }
+
+                    if (long.TryParse(
+                        GetTsvValue(row, "landing_ms"),
+                        out splitMilliseconds
+                    ))
+                    {
+                        _babeScreenLandingMilliseconds =
+                            Math.Max(0, splitMilliseconds);
+                    }
+
+                    continue;
+                }
+
+                if (area == CompletionAreaName)
+                {
+                    long clearTimeMilliseconds;
+
+                    if (long.TryParse(
+                        GetTsvValue(row, "entry_ms"),
+                        out clearTimeMilliseconds
+                    ))
+                    {
+                        _babeClearTimeMilliseconds =
+                            Math.Max(0, clearTimeMilliseconds);
+                    }
+
+                    continue;
+                }
+
                 if (area == "Unknown" || _areaFrames.ContainsKey(area))
                 {
                     continue;
@@ -138,7 +184,7 @@ namespace JKMetricsLite
                 long firstReachedMilliseconds;
 
                 if (long.TryParse(
-                    GetTsvValue(row, "split_ms"),
+                    GetTsvValue(row, "entry_ms"),
                     out firstReachedMilliseconds
                 ))
                 {
@@ -146,26 +192,38 @@ namespace JKMetricsLite
                         Math.Max(0, firstReachedMilliseconds);
                 }
 
-                if (GetTsvValue(row, "is_excluded") == "1")
+                long firstLandedMilliseconds;
+
+                if (long.TryParse(
+                    GetTsvValue(row, "landing_ms"),
+                    out firstLandedMilliseconds
+                ))
+                {
+                    _areaFirstLandedMilliseconds[area] =
+                        Math.Max(0, firstLandedMilliseconds);
+                }
+
+                if (GetTsvValue(row, "excluded") == "1")
                 {
                     _excludedAreas.Add(area);
                 }
 
-                if (GetTsvValue(row, "is_current") == "1")
+                if (GetTsvValue(row, "current") == "1")
                 {
                     _lastArea = area;
                 }
             }
         }
 
-        private void LoadScreenOrder()
+        private void LoadScreenEvents()
         {
-            List<Dictionary<string, string>> rows = ReadTsvRows(_screenOrderPath);
+            List<Dictionary<string, string>> rows = ReadTsvRows(_screenEventsPath);
 
             for (int i = 0; i < rows.Count; i++)
             {
                 Dictionary<string, string> row = rows[i];
                 string area = FormatAreaName(GetTsvValue(row, "area_name"));
+                string eventName = GetTsvValue(row, "event");
                 int screen;
 
                 if (!_areaFrames.ContainsKey(area) ||
@@ -176,15 +234,31 @@ namespace JKMetricsLite
                     continue;
                 }
 
-                if (!_areaScreenAppearedOrder.ContainsKey(area))
+                if (eventName == "entry")
                 {
-                    _areaScreenAppearedOrder[area] = new List<int>();
+                    AddScreenToAreaOrder(_areaScreenEnteredOrder, area, screen);
                 }
+                else if (eventName == "landing")
+                {
+                    AddScreenToAreaOrder(_areaScreenAppearedOrder, area, screen);
+                }
+            }
+        }
 
-                if (!_areaScreenAppearedOrder[area].Contains(screen))
-                {
-                    _areaScreenAppearedOrder[area].Add(screen);
-                }
+        private static void AddScreenToAreaOrder(
+            Dictionary<string, List<int>> target,
+            string area,
+            int screen
+        )
+        {
+            if (!target.ContainsKey(area))
+            {
+                target[area] = new List<int>();
+            }
+
+            if (!target[area].Contains(screen))
+            {
+                target[area].Add(screen);
             }
         }
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -72,6 +72,32 @@ namespace JKMetricsLite
             TimeSpan time = stats.Value.timeSpan;
 
             return time.TotalMilliseconds >= 0 ? (TimeSpan?)time : null;
+        }
+
+        internal static bool TryGetClearTimeMilliseconds(out long clearTimeMilliseconds)
+        {
+            clearTimeMilliseconds = 0;
+
+            PlayerStats? currentStats = TryGetCurrentStats();
+            PlayerStats? winStats = TryGetWinStats();
+
+            if (!currentStats.HasValue ||
+                !winStats.HasValue ||
+                !IsCurrentStatsAfterWin(currentStats.Value, winStats.Value))
+            {
+                return false;
+            }
+
+            clearTimeMilliseconds =
+                (long)Math.Round(winStats.Value.timeSpan.TotalMilliseconds);
+            return clearTimeMilliseconds >= 0;
+        }
+
+        internal static bool IsCurrentStatsAfterWin(PlayerStats current, PlayerStats win)
+        {
+            return current.steam_level_id.Equals(win.steam_level_id) &&
+                current.attempts == win.attempts + 1 &&
+                current.times_won == win.times_won + 1;
         }
 
         internal static PlayerStats? TryGetCurrentStats()
@@ -162,6 +188,51 @@ namespace JKMetricsLite
             }
 
             return TryGetPlayerStats("PermanentPlayerStats");
+        }
+
+        internal static PlayerStats? TryGetWinStats()
+        {
+            try
+            {
+                Type managerType = typeof(PlayerStats).Assembly.GetType(
+                    "JumpKing.MiscSystems.Achievements.AchievementManager"
+                );
+
+                if (managerType == null)
+                {
+                    return null;
+                }
+
+                object manager = GetAchievementManagerInstance(managerType);
+
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                PropertyInfo winStatsProperty = managerType.GetProperty(
+                    "WinStats",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                );
+
+                if (winStatsProperty == null)
+                {
+                    return null;
+                }
+
+                object statsObject = winStatsProperty.GetValue(manager, null);
+
+                if (statsObject is PlayerStats)
+                {
+                    return (PlayerStats)statsObject;
+                }
+            }
+            catch (Exception ex)
+            {
+                ScreenStayStatsBehaviour.LogError("Get win stats", ex);
+            }
+
+            return null;
         }
 
         private static object GetAchievementManagerInstance(Type managerType)
@@ -330,7 +401,14 @@ namespace JKMetricsLite
                     totals.TotalFalls
                 );
 
-                File.AppendAllText(_totalMetricsPath, sb.ToString(), Encoding.UTF8);
+                string output = sb.ToString();
+                var ioStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                File.AppendAllText(_totalMetricsPath, output, Encoding.UTF8);
+                ioStopwatch.Stop();
+                ScreenStayStatsBehaviour.RecordPerformanceTiming(
+                    "total_metrics_io",
+                    ioStopwatch.Elapsed.TotalMilliseconds
+                );
             }
             catch (Exception ex)
             {
@@ -379,3 +457,4 @@ namespace JKMetricsLite
         }
     }
 }
+

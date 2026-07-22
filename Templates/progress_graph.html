@@ -33,19 +33,30 @@
 <script>
 const screenMetricsFilePath = "../raw_data/attempts/current/screen_metrics.tsv";
 const areaFilePath = "../raw_data/attempts/current/area_progress.tsv";
-const screenOrderFilePath = "../raw_data/attempts/current/screen_order.tsv";
+const screenEventsFilePath = "../raw_data/attempts/current/screen_events.tsv";
 const stateFilePath = "../raw_data/attempts/current/current_state.tsv";
 
 const maxPoints = 1500;
 let cachedAreaLayoutSignature = "";
-let cachedScreenOrderText = "";
+let cachedScreenEventsText = "";
 let cachedScreenToProgress = new Map();
+let cachedAreaRanges = [];
 let cachedMaxProgress = 0;
 let cachedPoints = [];
 let lastAttempt = "";
 let lastScreenOrderRevision = null;
 let lastPointKey = "";
 let hasFullRebuild = false;
+
+function resetGraphCache() {
+  cachedAreaLayoutSignature = "";
+  cachedScreenEventsText = "";
+  cachedScreenToProgress = new Map();
+  cachedAreaRanges = [];
+  cachedMaxProgress = 0;
+  cachedPoints = [];
+  lastPointKey = "";
+}
 
 async function fetchText(path) {
   const res = await fetch(path + "?t=" + Date.now());
@@ -115,7 +126,7 @@ function buildAreaLayoutSignature(areaRows) {
     })
     .map(row => {
       const areaName = row.area_name || "";
-      const isExcluded = row.is_excluded === "1" ? "1" : "0";
+      const isExcluded = row.excluded === "1" ? "1" : "0";
       return areaName + "\t" + isExcluded;
     })
     .join("\n");
@@ -192,32 +203,34 @@ async function loadCurrentState() {
     areaName: row.area_name || "",
     currentAreaOrder: Number(row.current_area_order),
     currentScreenOrder: Number(row.current_screen_order),
+    pbAreaOrder: Number(row.pb_area_order),
+    pbScreenOrder: Number(row.pb_screen_order),
     screenOrderRevision: Number(row.screen_order_revision) || 0
   };
 }
 
 async function loadScreenToProgressMap() {
   const areaText = await fetchText(areaFilePath);
-  const screenOrderText = await fetchText(screenOrderFilePath);
+  const screenEventsText = await fetchText(screenEventsFilePath);
 
   const areaRows = parseTsv(areaText);
   const areaLayoutSignature = buildAreaLayoutSignature(areaRows);
 
   if (
     areaLayoutSignature === cachedAreaLayoutSignature &&
-    screenOrderText === cachedScreenOrderText
+    screenEventsText === cachedScreenEventsText
   ) {
     return cachedScreenToProgress;
   }
 
-  const screenOrderRows = parseTsv(screenOrderText);
+  const screenEventRows = parseTsv(screenEventsText);
   const includedAreas = [];
   const includedAreaSet = new Set();
 
   areaRows.forEach(row => {
     const areaName = row.area_name || "";
 
-    if (areaName === "" || areaName === "Unknown" || row.is_excluded === "1") {
+    if (areaName === "" || areaName === "Unknown" || row.excluded === "1") {
       return;
     }
 
@@ -229,11 +242,14 @@ async function loadScreenToProgressMap() {
 
   const screensByArea = new Map();
 
-  screenOrderRows.forEach(row => {
+  screenEventRows.forEach(row => {
     const areaName = row.area_name || "";
+    const eventName = row.event || "";
     const screen = Number(row.screen);
 
-    if (!includedAreaSet.has(areaName) || !Number.isFinite(screen)) {
+    if (eventName !== "landing" ||
+        !includedAreaSet.has(areaName) ||
+        !Number.isFinite(screen)) {
       return;
     }
 
@@ -249,10 +265,12 @@ async function loadScreenToProgressMap() {
   });
 
   const screenToProgress = new Map();
+  const areaRanges = [];
   let progressIndex = 1;
 
   includedAreas.forEach((areaName, areaIndex) => {
     const screens = screensByArea.get(areaName) || [];
+    const startProgressIndex = progressIndex;
 
     screens.forEach((screen, screenIndex) => {
       if (!screenToProgress.has(screen)) {
@@ -265,11 +283,20 @@ async function loadScreenToProgressMap() {
         progressIndex++;
       }
     });
+
+    if (progressIndex > startProgressIndex) {
+      areaRanges.push({
+        areaIndex: areaIndex + 1,
+        start: startProgressIndex,
+        end: progressIndex - 1
+      });
+    }
   });
 
   cachedAreaLayoutSignature = areaLayoutSignature;
-  cachedScreenOrderText = screenOrderText;
+  cachedScreenEventsText = screenEventsText;
   cachedScreenToProgress = screenToProgress;
+  cachedAreaRanges = areaRanges;
   cachedMaxProgress = Math.max(0, progressIndex - 1);
 
   return cachedScreenToProgress;
@@ -314,6 +341,7 @@ function appendStatePoint(state) {
       screenInArea: state.currentScreenOrder
     };
     cachedScreenToProgress.set(state.screen, progress);
+    extendAreaRange(progress.areaIndex, progress.progressIndex);
   }
 
   cachedPoints.push(buildGraphPoint(state.elapsedMs, state.screen, progress));
@@ -324,6 +352,44 @@ function appendStatePoint(state) {
 
   lastPointKey = key;
   return result;
+}
+
+function extendAreaRange(areaIndex, progressIndex) {
+  let range = cachedAreaRanges.find(item => item.areaIndex === areaIndex);
+
+  if (!range) {
+    cachedAreaRanges.push({
+      areaIndex,
+      start: progressIndex,
+      end: progressIndex
+    });
+    return;
+  }
+
+  range.start = Math.min(range.start, progressIndex);
+  range.end = Math.max(range.end, progressIndex);
+}
+
+function progressToY(progress, yMin, yMax, paddingTop, plotHeight) {
+  return paddingTop + plotHeight - ((progress - yMin) / (yMax - yMin)) * plotHeight;
+}
+
+function drawAreaBands(ctx, yMin, yMax, paddingLeft, paddingTop, plotWidth, plotHeight) {
+  cachedAreaRanges.forEach((range, index) => {
+    const start = Math.max(yMin, range.start - 0.5);
+    const end = Math.min(yMax, range.end + 0.5);
+
+    if (end <= start) {
+      return;
+    }
+
+    const yTop = progressToY(end, yMin, yMax, paddingTop, plotHeight);
+    const yBottom = progressToY(start, yMin, yMax, paddingTop, plotHeight);
+    ctx.fillStyle = index % 2 === 0
+      ? "rgb(36,36,36)"
+      : "rgb(24,24,24)";
+    ctx.fillRect(paddingLeft, yTop, plotWidth, yBottom - yTop);
+  });
 }
 
 function formatRelativeTime(milliseconds) {
@@ -338,7 +404,44 @@ function formatRelativeTime(milliseconds) {
   return "-" + minutes + "m";
 }
 
-function drawChart(points) {
+function findLatestPbPoint(points, pbAreaOrder, pbScreenOrder) {
+  if (!Number.isFinite(pbAreaOrder) ||
+      !Number.isFinite(pbScreenOrder) ||
+      pbAreaOrder <= 0 ||
+      pbScreenOrder <= 0) {
+    return null;
+  }
+
+  for (let i = points.length - 1; i >= 0; i--) {
+    const point = points[i];
+
+    if (point.areaIndex === pbAreaOrder &&
+        point.screenInArea === pbScreenOrder) {
+      return point;
+    }
+  }
+
+  return null;
+}
+
+function drawPeakPointer(ctx, point, minX, maxX, paddingLeft, paddingTop, plotWidth) {
+  if (!point) {
+    return;
+  }
+
+  const x = paddingLeft + ((point.elapsedMs - minX) / (maxX - minX)) * plotWidth;
+  const markerTip = paddingTop - 1;
+  const markerTop = paddingTop - 17;
+
+  ctx.fillStyle = "rgba(255,72,72,0.95)";
+  ctx.beginPath();
+  ctx.moveTo(x, markerTip);
+  ctx.lineTo(x - 8, markerTop);
+  ctx.lineTo(x + 8, markerTop);
+  ctx.closePath();
+  ctx.fill();
+}
+function drawChart(points, state) {
   const canvas = document.getElementById("chart");
   const ctx = canvas.getContext("2d");
 
@@ -379,6 +482,12 @@ function drawChart(points) {
     return;
   }
 
+  drawAreaBands(ctx, yMin, yMax, paddingLeft, paddingTop, plotWidth, plotHeight);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(paddingLeft, paddingTop, plotWidth, plotHeight);
+
   const yTicks = [];
   [0, 0.25, 0.50, 0.75, 1].forEach(ratio => {
     const tick = Math.round(yMin + (yMax - yMin) * ratio);
@@ -389,13 +498,7 @@ function drawChart(points) {
   });
 
   for (const tick of yTicks) {
-    const y = paddingTop + plotHeight - ((tick - yMin) / (yMax - yMin)) * plotHeight;
-
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    ctx.beginPath();
-    ctx.moveTo(paddingLeft, y);
-    ctx.lineTo(paddingLeft + plotWidth, y);
-    ctx.stroke();
+    const y = progressToY(tick, yMin, yMax, paddingTop, plotHeight);
 
     ctx.fillStyle = "white";
     ctx.fillText(String(tick).padStart(3, " "), 8, y + 5);
@@ -428,7 +531,7 @@ function drawChart(points) {
     const p = visible[i];
 
     const x = paddingLeft + ((p.elapsedMs - minX) / (maxX - minX)) * plotWidth;
-    const y = paddingTop + plotHeight - ((p.progressIndex - yMin) / (yMax - yMin)) * plotHeight;
+    const y = progressToY(p.progressIndex, yMin, yMax, paddingTop, plotHeight);
 
     if (i === 0) {
       ctx.moveTo(x, y);
@@ -439,9 +542,19 @@ function drawChart(points) {
 
   ctx.stroke();
 
+  drawPeakPointer(
+    ctx,
+    findLatestPbPoint(visible, state.pbAreaOrder, state.pbScreenOrder),
+    minX,
+    maxX,
+    paddingLeft,
+    paddingTop,
+    plotWidth
+  );
+
   const last = visible[visible.length - 1];
   const lastX = paddingLeft + ((last.elapsedMs - minX) / (maxX - minX)) * plotWidth;
-  const lastY = paddingTop + plotHeight - ((last.progressIndex - yMin) / (yMax - yMin)) * plotHeight;
+  const lastY = progressToY(last.progressIndex, yMin, yMax, paddingTop, plotHeight);
 
   ctx.fillStyle = "white";
   ctx.beginPath();
@@ -468,11 +581,11 @@ async function update() {
       state.screenOrderRevision !== lastScreenOrderRevision;
 
     if (needsMetricReload) {
+      resetGraphCache();
       await loadScreenMetrics();
       hasFullRebuild = true;
       lastAttempt = state.attempt;
       lastScreenOrderRevision = state.screenOrderRevision;
-      lastPointKey = "";
     } else if (needsScreenRemap) {
       await loadScreenToProgressMap();
       remapCachedPoints();
@@ -481,7 +594,7 @@ async function update() {
     }
 
     appendStatePoint(state);
-    drawChart(cachedPoints);
+    drawChart(cachedPoints, state);
   } catch (e) {
     const canvas = document.getElementById("chart");
     const ctx = canvas.getContext("2d");
