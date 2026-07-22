@@ -203,6 +203,8 @@ async function loadCurrentState() {
     areaName: row.area_name || "",
     currentAreaOrder: Number(row.current_area_order),
     currentScreenOrder: Number(row.current_screen_order),
+    pbAreaOrder: Number(row.pb_area_order),
+    pbScreenOrder: Number(row.pb_screen_order),
     screenOrderRevision: Number(row.screen_order_revision) || 0
   };
 }
@@ -402,20 +404,24 @@ function formatRelativeTime(milliseconds) {
   return "-" + minutes + "m";
 }
 
-function findFirstPeakPoint(points) {
-  let peakProgress = 0;
-  let peakPoint = null;
+function findLatestPbPoint(points, pbAreaOrder, pbScreenOrder) {
+  if (!Number.isFinite(pbAreaOrder) ||
+      !Number.isFinite(pbScreenOrder) ||
+      pbAreaOrder <= 0 ||
+      pbScreenOrder <= 0) {
+    return null;
+  }
 
-  for (let i = 0; i < points.length; i++) {
+  for (let i = points.length - 1; i >= 0; i--) {
     const point = points[i];
 
-    if (point.progressIndex > peakProgress) {
-      peakProgress = point.progressIndex;
-      peakPoint = point;
+    if (point.areaIndex === pbAreaOrder &&
+        point.screenInArea === pbScreenOrder) {
+      return point;
     }
   }
 
-  return peakPoint;
+  return null;
 }
 
 function drawPeakPointer(ctx, point, minX, maxX, paddingLeft, paddingTop, plotWidth) {
@@ -435,7 +441,7 @@ function drawPeakPointer(ctx, point, minX, maxX, paddingLeft, paddingTop, plotWi
   ctx.closePath();
   ctx.fill();
 }
-function drawChart(points) {
+function drawChart(points, state) {
   const canvas = document.getElementById("chart");
   const ctx = canvas.getContext("2d");
 
@@ -538,7 +544,7 @@ function drawChart(points) {
 
   drawPeakPointer(
     ctx,
-    findFirstPeakPoint(visible),
+    findLatestPbPoint(visible, state.pbAreaOrder, state.pbScreenOrder),
     minX,
     maxX,
     paddingLeft,
@@ -588,7 +594,7 @@ async function update() {
     }
 
     appendStatePoint(state);
-    drawChart(cachedPoints);
+    drawChart(cachedPoints, state);
   } catch (e) {
     const canvas = document.getElementById("chart");
     const ctx = canvas.getContext("2d");

@@ -31,7 +31,9 @@ If your Steam library is installed somewhere else, the first part of the path wi
 
 To change the output folder, edit OutputDir in eski4869.JKMetricsLite.Settings.xml. JKMetricsLite is a relative path and creates the output folder next to the mod. Absolute paths such as C:\JumpKingMetrics are also supported. Restart the game after editing the settings file.
 
-The mod menu has separate toggles for Attempt Metrics, Total Metrics, and Clear Time Metrics.
+Select Open Output Folder in the mod menu to open the configured output directory.
+
+The mod menu has separate toggles for Attempt Metrics and Total Metrics.
 
 AttemptBackupGenerations controls how many previous attempt folders are kept under raw_data/attempts. The default is 1, and values are capped at 10.
 
@@ -76,10 +78,7 @@ current_state.tsv
 attempt	elapsed_ms	screen	area_name	current_area_order	current_screen_order	pb_area_order	pb_screen_order	screen_order_revision
 
 total_metrics.tsv
-sampled_at	total_frames	total_jumps	total_falls
-
-clear_times.tsv
-attempt	level_name	clear_time_ms	summary_target[/code]
+sampled_at	total_frames	total_jumps	total_falls[/code]
 
 [b]OBS Views[/b]
 
@@ -91,7 +90,6 @@ After launching the game with the mod enabled, open OBS and add a Browser Source
 [*][b]obs/area_name_splits_speedrun.html[/b] - A speedrun-focused area name split table using m s ms time format.
 [*][b]obs/area_number_splits_speedrun.html[/b] - A speedrun-focused area number split table using m s ms time format.
 [*][b]obs/progress_graph.html[/b] - Displays screen progress as a real-time graph.
-[*][b]obs/clear_time_metrics.html[/b] - Displays recent clear-time records with area name, clear time, average, minimum, maximum, and total.
 [/list]
 
 [hr]
@@ -109,20 +107,6 @@ Long-term metrics are accumulated across play sessions and are not reset with ru
 Open local/recap.html directly in a browser and select raw_data/total_metrics.tsv to view jump-based recaps, including total jumps/falls, active days, streaks, best day/month/weekday/hour, hourly heatmaps, and monthly jumps/falls.
 
 The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
-
-[hr]
-
-[h2]Clear Time Metrics[/h2]
-
-Clear Time Metrics keep the latest clear-time records for categories where repeated clears are useful, such as 10 Times or All Maps style practice.
-
-[list]
-[*][b]raw_data/clear_times.tsv[/b] - Latest clear-time records with attempt, level name, clear time, and summary target.
-[/list]
-
-[b]summary_target[/b] uses 1 for rows included in the OBS summary and 0 for rows kept only as history. New clear records are added with 1; the Reset menu action changes existing records to 0.
-
-Open obs/clear_time_metrics.html in OBS to display target clears, average, minimum, maximum, and total.
 
 [hr]
 

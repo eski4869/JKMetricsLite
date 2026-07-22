@@ -25,7 +25,6 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
 <MetricsPreferences>
   <AttemptMetricsEnabled>true</AttemptMetricsEnabled>
   <TotalMetricsEnabled>true</TotalMetricsEnabled>
-  <ClearTimeMetricsEnabled>true</ClearTimeMetricsEnabled>
   <OutputDir>JKMetricsLite</OutputDir>
   <AttemptBackupGenerations>1</AttemptBackupGenerations>
 </MetricsPreferences>
@@ -35,9 +34,9 @@ Settings are stored in `eski4869.JKMetricsLite.Settings.xml` next to the mod. Re
 
 `TotalMetricsEnabled` controls long-term total metrics used by `recap.html`.
 
-`ClearTimeMetricsEnabled` controls Clear Time Metrics used by `clear_time_metrics.html`.
-
 `OutputDir` controls where generated files are written. `JKMetricsLite` is a relative path and creates the output folder next to the mod. Absolute paths such as `C:\JumpKingMetrics` are also supported.
+
+Select `Open Output Folder` in the mod menu to open the configured output directory.
 
 `AttemptBackupGenerations` controls how many previous attempt folders are kept under `raw_data/attempts/`. The default is `1`, and values are capped at `10`.
 
@@ -57,15 +56,13 @@ JKMetricsLite/
 │   │       ├── screen_events.tsv
 │   │       ├── screen_metrics.tsv
 │   │       └── current_state.tsv
-│   ├── total_metrics.tsv
-│   └── clear_times.tsv
+│   └── total_metrics.tsv
 ├── obs/
 │   ├── area_name_splits.html
 │   ├── area_number_splits.html
 │   ├── area_name_splits_speedrun.html
 │   ├── area_number_splits_speedrun.html
-│   ├── progress_graph.html
-│   └── clear_time_metrics.html
+│   └── progress_graph.html
 ├── local/
 │   └── recap.html
 └── error.log
@@ -171,10 +168,6 @@ Displays screen progress as a real-time graph.
 
 <img width="350" height="300" alt="image" src="https://github.com/user-attachments/assets/8ca9df05-ac2a-472f-b7b4-a4ae0f5e8b64" />
 
-`obs/clear_time_metrics.html`
-
-Displays recent clear-time records with area name, clear time, average, minimum, maximum, and total.
-
 In practice, crop the overlay and use only the parts you need. The image below is an example stream layout.
 
 <img width="605" height="348" alt="image" src="https://github.com/user-attachments/assets/10760438-0855-4935-8f05-2f1c7db61d6b" />
@@ -201,28 +194,6 @@ Open `local/recap.html` directly in a browser and select `raw_data/total_metrics
 The TSV file is selected manually so the page can work when opened directly in a browser, without a local web server. Browsers usually block direct file loading from nearby files for security reasons.
 
 <img width="661" height="579" alt="image" src="https://github.com/user-attachments/assets/99ae0f5a-647a-4e57-9f21-52c9dc95011c" />
-
-## Clear Time Metrics
-
-Clear Time Metrics keep the latest clear-time records for categories where repeated clears are useful, such as 10 Times or All Maps style practice.
-
-| Type | File | Key | Values | Update timing |
-| --- | --- | --- | --- | --- |
-| Clear Time Metrics | `raw_data/clear_times.tsv` | Attempt | Level name, clear time, and summary target | Rewritten on clear or reset, keeping up to 100 records. |
-
-`raw_data/clear_times.tsv`
-
-| Column | Format | Meaning |
-| --- | --- | --- |
-| `attempt` | Integer | Attempt number when the clear was recorded. |
-| `level_name` | Text | Level name. |
-| `clear_time_ms` | Milliseconds | Clear time. |
-| `summary_target` | `0` or `1` | `1` when the row is included in the OBS summary. |
-
-`summary_target` uses `1` for rows included in the OBS summary and `0` for rows kept only as history. New clear records are added with `1`; the Reset menu action changes existing records to `0`.
-
-Open `obs/clear_time_metrics.html` in OBS to display target clears, average, minimum, maximum, and total.
-
 
 ## Area and PB Logic
 

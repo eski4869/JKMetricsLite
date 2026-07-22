@@ -12,6 +12,20 @@ namespace JKMetricsLite
 {
     public partial class ScreenStayStatsBehaviour
     {
+        private static readonly HashSet<string> ChargeableBlockNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "SandBlock",
+            "Quicksand",
+            "SideSand",
+            "UpSand",
+            "MagicSand",
+            "InfinityJump",
+            "WallJump",
+            "AirJump",
+            "AirDash",
+            "Flapping"
+        };
+
         internal static bool IsCurrentAreaExcludedFromMetrics()
         {
             if (_instance == null)
@@ -191,22 +205,17 @@ namespace JKMetricsLite
                 return false;
             }
 
-            if (_playerBody.IsOnGround)
-            {
-                return true;
-            }
-
-            return !_playerBody.IsKnocked && IsPlayerOnSandLikeBlock();
+            return !_playerBody.IsKnocked &&
+                (_playerBody.IsOnGround || IsPlayerOnChargeableBlock());
         }
 
-        private bool IsPlayerOnSandLikeBlock()
+        private bool IsPlayerOnChargeableBlock()
         {
             try
             {
                 foreach (Type blockType in _playerBody.OnBlocks())
                 {
-                    if (blockType != null &&
-                        blockType.Name.IndexOf("Sand", StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (blockType != null && ChargeableBlockNames.Contains(blockType.Name))
                     {
                         return true;
                     }
@@ -214,7 +223,7 @@ namespace JKMetricsLite
             }
             catch (Exception ex)
             {
-                LogError("Check sand-like block", ex);
+                LogError("Check chargeable block", ex);
             }
 
             return false;
