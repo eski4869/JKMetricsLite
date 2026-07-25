@@ -346,11 +346,6 @@ namespace JKMetricsLite
             FlushCurrentInstance();
         }
 
-        public static void FlushOnLevelEnd()
-        {
-            FlushCurrentInstance();
-        }
-
         private static void FlushCurrentInstance()
         {
             if (_instance == null)
@@ -401,14 +396,7 @@ namespace JKMetricsLite
                     totals.TotalFalls
                 );
 
-                string output = sb.ToString();
-                var ioStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                File.AppendAllText(_totalMetricsPath, output, Encoding.UTF8);
-                ioStopwatch.Stop();
-                ScreenStayStatsBehaviour.RecordPerformanceTiming(
-                    "total_metrics_io",
-                    ioStopwatch.Elapsed.TotalMilliseconds
-                );
+                File.AppendAllText(_totalMetricsPath, sb.ToString(), Encoding.UTF8);
             }
             catch (Exception ex)
             {

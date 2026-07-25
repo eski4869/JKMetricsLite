@@ -119,10 +119,6 @@ namespace JKMetricsLite
         public static void OnLevelEnd()
         {
             SaveSettingsIfDirty();
-            ScreenStayStatsBehaviour.FlushOnLevelEnd();
-            TotalMetricsBehaviour.FlushOnLevelEnd();
-            _registeredAttemptBehaviour = null;
-            _registeredTotalBehaviour = null;
         }
 
         [OnLevelUnload]
@@ -450,7 +446,6 @@ namespace JKMetricsLite
         private const int MinScreen = 1;
         private const int MaxScreen = 169;
         private const int OutputIntervalFrames = 60;
-        private const int PerformanceLogIntervalFrames = 600;
         private const string BabeScreenAreaName = "Babe Screen";
         private const string CompletionAreaName = "Clear Time";
         internal const string DefaultOutputFolderName = "JKMetricsLite";
@@ -499,9 +494,6 @@ namespace JKMetricsLite
 
         private int _totalFrames = 0;
         private int _outputCounter = 0;
-        private int _performanceLogCounter = 0;
-        private readonly Dictionary<string, PerformanceTiming> _performanceTimings =
-            new Dictionary<string, PerformanceTiming>();
         private int _lastScreen = -1;
         private string _lastArea = "Unknown";
         private int _screenOrderRevision = 0;
@@ -850,11 +842,6 @@ namespace JKMetricsLite
             FlushCurrentInstance();
         }
 
-        public static void FlushOnLevelEnd()
-        {
-            FlushCurrentInstance();
-        }
-
         private static void FlushCurrentInstance()
         {
             if (_instance == null)
@@ -885,13 +872,6 @@ namespace JKMetricsLite
 
         private void TrackCurrentFrame()
         {
-            var frameStopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-            if (_locations == null || _locations.Length == 0)
-            {
-                _locations = LoadLocations();
-            }
-
             int screen = JumpKing.Camera.CurrentScreen + 1;
 
             if (screen >= MinScreen && screen <= MaxScreen)
@@ -947,9 +927,6 @@ namespace JKMetricsLite
                 RecordClearTimeIfNeeded();
             }
 
-            frameStopwatch.Stop();
-            AddPerformanceTiming("frame_tracking", frameStopwatch.Elapsed.TotalMilliseconds);
-
             _totalFrames++;
             _outputCounter++;
 
@@ -959,8 +936,6 @@ namespace JKMetricsLite
                 WriteOutputFiles();
                 AppendScreenMetricTsv();
             }
-
-            MaybeWritePerformanceLog();
         }
 
         private void WriteOutputFiles()
